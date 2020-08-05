@@ -1,0 +1,127 @@
+package top.codings.websiphon.light.manager;
+
+import lombok.extern.slf4j.Slf4j;
+import top.codings.websiphon.light.config.CrawlerConfig;
+import top.codings.websiphon.light.crawler.CombineCrawler;
+import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.requester.support.BuiltinRequest;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * 处理器链的响应处理器
+ */
+@Slf4j
+public abstract class ChainResponseHandler implements QueueResponseHandler {
+    protected CrawlerConfig config;
+    private ExecutorService exe;
+    private LinkedTransferQueue<BuiltinRequest> queue;
+    private Semaphore token;
+    private Lock lock = new ReentrantLock();
+    protected ICrawler crawler;
+    /**
+     * 用于防止非原子操作造成的任务完成情况误判
+     */
+    private volatile boolean normal;
+
+    @Override
+    public void startup() {
+        queue = new LinkedTransferQueue<>();
+        exe = Executors.newCachedThreadPool();
+        token = new Semaphore(config.getMaxConcurrentProcessing());
+        exe.submit(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    // 先阻塞获取任务
+                    BuiltinRequest request = queue.take();
+                    // 获取令牌
+                    token.acquire();
+                    // 将标记位恢复
+                    normal = true;
+                    exe.submit(() -> {
+                        try {
+                            beforeHandle(request);
+                            handle(request);
+                            afterHandle(request);
+                        } catch (Exception e) {
+                            log.error("响应处理发生异常", e);
+                        } finally {
+                            token.release();
+//                            log.debug("当前处理令牌剩余 [{}]", token.availablePermits());
+                            // 检查爬虫是否已空闲
+                            if (crawler != null && !crawler.isBusy() && lock.tryLock()) {
+                                try {
+                                    if (!crawler.isBusy()) {
+                                        ICrawler c;
+                                        if (!CombineCrawler.class.isAssignableFrom(crawler.getClass())) {
+                                            c = crawler;
+                                        } else {
+                                            CombineCrawler n = (CombineCrawler) crawler;
+                                            c = n.wrapper();
+                                        }
+                                        whenFinish(c);
+                                    }
+                                } finally {
+                                    lock.unlock();
+                                }
+                            }
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    return;
+                } catch (Exception e) {
+                    token.release();
+                    log.error("从响应队列获取任务失败", e);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void shutdown(boolean force) {
+        if (null != exe) {
+            if (force) exe.shutdownNow();
+            else exe.shutdown();
+        }
+        if (null != queue) queue.clear();
+    }
+
+    @Override
+    public boolean push(BuiltinRequest request) {
+        normal = false;
+        return queue.offer(request);
+    }
+
+    @Override
+    public void setConfig(CrawlerConfig config) {
+        this.config = config;
+    }
+
+    @Override
+    public boolean isBusy() {
+        return !(normal &&
+                token.availablePermits() == config.getMaxConcurrentProcessing() &&
+                queue.isEmpty()
+        );
+    }
+
+    @Override
+    public void setCrawler(ICrawler crawler) {
+        this.crawler = crawler;
+    }
+
+    protected void beforeHandle(BuiltinRequest request) throws Exception {
+
+    }
+
+    protected void afterHandle(BuiltinRequest request) throws Exception {
+
+    }
+
+    protected abstract void handle(BuiltinRequest request) throws Exception;
+}

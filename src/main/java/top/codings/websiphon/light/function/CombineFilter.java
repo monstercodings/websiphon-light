@@ -1,0 +1,46 @@
+package top.codings.websiphon.light.function;
+
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
+
+import java.nio.charset.Charset;
+
+public class CombineFilter implements CleanableFilter<String, Boolean> {
+    private int maxCount = 200000000;
+    private double fpp = 0.001d;
+    private BloomFilter<String> localFilter;
+    private IFilter<String, Boolean> outerFilter;
+
+    public CombineFilter(IFilter<String, Boolean> outerFilter) {
+        this.outerFilter = outerFilter;
+        localFilter = BloomFilter.create(Funnels.stringFunnel(Charset.forName("utf-8")), maxCount, fpp);
+    }
+
+    public CombineFilter(int maxCount, double fpp, IFilter<String, Boolean> outerFilter) {
+        this.maxCount = maxCount;
+        this.fpp = fpp;
+        this.outerFilter = outerFilter;
+        localFilter = BloomFilter.create(Funnels.stringFunnel(Charset.forName("utf-8")), maxCount, fpp);
+    }
+
+    @Override
+    public Boolean put(String s) {
+        if (outerFilter.contain(s)) {
+            return false;
+        }
+        return localFilter.put(s);
+    }
+
+    @Override
+    public Boolean contain(String s) {
+        if (outerFilter.contain(s)) {
+            return true;
+        }
+        return localFilter.mightContain(s);
+    }
+
+    @Override
+    public void clear() {
+        localFilter = BloomFilter.create(Funnels.stringFunnel(Charset.forName("utf-8")), maxCount, fpp);
+    }
+}
