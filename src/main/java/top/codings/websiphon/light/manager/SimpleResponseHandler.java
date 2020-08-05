@@ -27,6 +27,7 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
         errors.add(builtinRequest -> {
             BuiltinRequest.RequestResult result = builtinRequest.getRequestResult();
             Throwable throwable = result.cause();
+            handleError(builtinRequest, throwable);
 //            log.error("发生异常 -> {}", throwable.getClass());
             return builtinRequest;
         });
