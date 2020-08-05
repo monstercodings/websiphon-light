@@ -1,22 +1,21 @@
 package top.codings.websiphon.light.test;
 
-import com.alibaba.fastjson.JSON;
-import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
-import top.codings.websiphon.light.manager.StatResponseHandler;
-import top.codings.websiphon.light.processor.AbstractProcessor;
-import top.codings.websiphon.light.processor.IProcessor;
-import top.codings.websiphon.light.processor.support.Text2DocProcessor;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
 
 public class TotalTest {
+
+    public static void main(String[] args) throws InterruptedException {
+        new TotalTest().test();
+    }
+
     @Test
     public void test() throws InterruptedException {
         QpsDataStat stat = new QpsDataStat(30);
