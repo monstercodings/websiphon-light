@@ -33,7 +33,7 @@ public class TotalTest {
                 .wrapBy(new RateLimitCrawler());
         crawler.startup();
         crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
-                .uri(URI.create("https://www.baidu1.com"))
+                .uri(URI.create("https://www.baidu.com"))
                 .build()));
         /*TimeUnit.SECONDS.sleep(1);
         crawler.push(new BuiltinRequest(HttpRequest.newBuilder()

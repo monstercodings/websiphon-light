@@ -6,8 +6,10 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.util.CharsetUtils;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.*;
 import java.net.Socket;
@@ -73,7 +75,7 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                             request.httpRequest = httpResponse.request();
                             request.httpResponse = httpResponse;
                             String mimeType;
-                            Charset charset;
+                            Charset charset = null;
                             contentType = httpResponse.headers().firstValue("content-type").orElse("");
                             Matcher matcher = pattern.matcher(contentType);
                             if (matcher.find()) {
@@ -82,32 +84,32 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                                     mimeType = "text/html";
                                 }
                                 String charsetStr = matcher.group(3);
-                                if (StringUtils.isBlank(charsetStr)) {
-                                    charsetStr = "utf-8";
-                                } else if (charsetStr.equals("binary")) {
-                                    charsetStr = "utf-8";
+                                if (StringUtils.isNotBlank(charsetStr)) {
+                                    if (charsetStr.contains(",")) {
+                                        charsetStr = charsetStr.split(",")[0];
+                                    }
+                                    charset = CharsetUtils.lookup(charsetStr);
                                 }
-                                if (charsetStr.contains(",")) {
-                                    charsetStr = charsetStr.split(",")[0];
-                                }
-                                charset = Charset.forName(charsetStr);
                             } else {
                                 log.trace("无字符编码类型[{}] -> {}", contentType, httpResponse.request().uri());
                                 mimeType = "text/html";
-                                charset = Charset.forName("utf-8");
+                            }
+                            byte[] body = httpResponse.body();
+                            if (null == charset) {
+                                charset = HttpCharsetUtil.findCharset(body);
                             }
                             if (mimeType.contains("text")) {
                                 // 文本解析
                                 request.requestResult.responseType = BuiltinRequest.ResponseType.TEXT;
-                                request.requestResult.data = Optional.ofNullable(new String(httpResponse.body(), charset)).orElse("<html>该网页无内容</html>");
+                                request.requestResult.data = Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>");
                             } else if (mimeType.contains("json")) {
                                 // JSON解析
                                 request.requestResult.responseType = BuiltinRequest.ResponseType.JSON;
-                                request.requestResult.data = JSON.parse(Optional.ofNullable(new String(httpResponse.body(), charset)).orElse("{}"));
+                                request.requestResult.data = JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}"));
                             } else {
                                 // 字节解析
                                 request.requestResult.responseType = BuiltinRequest.ResponseType.UNKNOW;
-                                request.requestResult.data = httpResponse.body();
+                                request.requestResult.data = body;
                             }
                             return request;
                         } catch (Exception e) {
