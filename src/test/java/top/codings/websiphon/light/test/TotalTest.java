@@ -9,7 +9,6 @@ import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
-import java.util.concurrent.TimeUnit;
 
 public class TotalTest {
 
@@ -34,7 +33,7 @@ public class TotalTest {
                 .wrapBy(new RateLimitCrawler());
         crawler.startup();
         crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
-                .uri(URI.create("https://www.baidu.com"))
+                .uri(URI.create("https://www.baidu1.com"))
                 .build()));
         /*TimeUnit.SECONDS.sleep(1);
         crawler.push(new BuiltinRequest(HttpRequest.newBuilder()

@@ -21,9 +21,9 @@ public class BaseCrawler extends CombineCrawler {
         } catch (Exception e) {
             throw new RuntimeException("初始化响应处理器失败", e);
         }
-        if (responseHandler instanceof QueueResponseHandler) {
+        /*if (responseHandler instanceof QueueResponseHandler) {
             ((QueueResponseHandler) responseHandler).setCrawler(this);
-        }
+        }*/
         responseHandler.setConfig(config);
         setRequester((CombineRequester) IRequester
                 .newBuilder(config.isSync())
@@ -44,7 +44,7 @@ public class BaseCrawler extends CombineCrawler {
     @Override
     public void startup() {
         // 启动响应处理器
-        responseHandler.startup();
+        responseHandler.startup(this);
         // 初始化请求器，并使用装饰器模式增强内建请求器
         /*requester = new DistinctRequester(
                 new RateLimitRequester(

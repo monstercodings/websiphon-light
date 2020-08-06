@@ -23,14 +23,14 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
     private LinkedTransferQueue<BuiltinRequest> queue;
     private Semaphore token;
     private Lock lock = new ReentrantLock();
-    protected ICrawler crawler;
+//    private ICrawler crawler;
     /**
      * 用于防止非原子操作造成的任务完成情况误判
      */
     private volatile boolean normal;
 
     @Override
-    public void startup() {
+    public void startup(ICrawler crawler) {
         queue = new LinkedTransferQueue<>();
         exe = Executors.newCachedThreadPool();
         token = new Semaphore(config.getMaxConcurrentProcessing());
@@ -45,9 +45,9 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
                     normal = true;
                     exe.submit(() -> {
                         try {
-                            beforeHandle(request);
-                            handle(request);
-                            afterHandle(request);
+                            beforeHandle(request, crawler);
+                            handle(request, crawler);
+                            afterHandle(request, crawler);
                         } catch (Exception e) {
                             log.error("响应处理发生异常", e);
                         } finally {
@@ -110,18 +110,18 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
         );
     }
 
-    @Override
+    /*@Override
     public void setCrawler(ICrawler crawler) {
         this.crawler = crawler;
-    }
+    }*/
 
-    protected void beforeHandle(BuiltinRequest request) throws Exception {
-
-    }
-
-    protected void afterHandle(BuiltinRequest request) throws Exception {
+    protected void beforeHandle(BuiltinRequest request, ICrawler crawler) throws Exception {
 
     }
 
-    protected abstract void handle(BuiltinRequest request) throws Exception;
+    protected void afterHandle(BuiltinRequest request, ICrawler crawler) throws Exception {
+
+    }
+
+    protected abstract void handle(BuiltinRequest request, ICrawler crawler) throws Exception;
 }

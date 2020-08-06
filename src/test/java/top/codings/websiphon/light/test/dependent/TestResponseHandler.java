@@ -39,7 +39,8 @@ public class TestResponseHandler extends StatResponseHandler {
     }
 
     @Override
-    protected void handleError(BuiltinRequest request, Throwable throwable) {
+    protected void handleError(BuiltinRequest request, Throwable throwable, ICrawler crawler) {
+        System.err.println(String.format("爬虫 -> %s", ((CombineCrawler) crawler).wrapper().getClass().getName()));
         System.err.println("发生异常 -> " + throwable.getClass().getName());
     }
 

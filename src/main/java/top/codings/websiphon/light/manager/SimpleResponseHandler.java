@@ -1,6 +1,7 @@
 package top.codings.websiphon.light.manager;
 
 import lombok.extern.slf4j.Slf4j;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.processor.IProcessor;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
@@ -16,9 +17,10 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
     protected List<Function<BuiltinRequest, BuiltinRequest>> successes = new CopyOnWriteArrayList<>();
     protected List<Function<BuiltinRequest, BuiltinRequest>> errors = new CopyOnWriteArrayList<>();
 
-    public SimpleResponseHandler() {
-        IProcessor processor = processorChain();
+    @Override
+    public void startup(ICrawler crawler) {
         successes.add(builtinRequest -> {
+            IProcessor processor = processorChain();
             BuiltinRequest.RequestResult result = builtinRequest.getRequestResult();
             Object data = result.get();
             processor.process(data, builtinRequest, crawler);
@@ -27,14 +29,15 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
         errors.add(builtinRequest -> {
             BuiltinRequest.RequestResult result = builtinRequest.getRequestResult();
             Throwable throwable = result.cause();
-            handleError(builtinRequest, throwable);
+            handleError(builtinRequest, throwable, crawler);
 //            log.error("发生异常 -> {}", throwable.getClass());
             return builtinRequest;
         });
+        super.startup(crawler);
     }
 
     @Override
-    protected void handle(BuiltinRequest request) throws Exception {
+    protected void handle(BuiltinRequest request, ICrawler crawler) throws Exception {
         BuiltinRequest.RequestResult result = request.getRequestResult();
         if (result.isSucceed()) {
             handleSucceed(request);
@@ -71,14 +74,16 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
 
     /**
      * 返回处理器链
+     *
      * @return
      */
     protected abstract IProcessor processorChain();
 
     /**
      * 处理异常状态
+     *
      * @param request
      * @param throwable
      */
-    protected abstract void handleError(BuiltinRequest request, Throwable throwable);
+    protected abstract void handleError(BuiltinRequest request, Throwable throwable, ICrawler crawler);
 }

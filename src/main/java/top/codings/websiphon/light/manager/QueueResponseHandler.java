@@ -11,5 +11,5 @@ public interface QueueResponseHandler extends IResponseHandler{
 
     void whenFinish(ICrawler crawler);
 
-    void setCrawler(ICrawler crawler);
+//    void setCrawler(ICrawler crawler);
 }
