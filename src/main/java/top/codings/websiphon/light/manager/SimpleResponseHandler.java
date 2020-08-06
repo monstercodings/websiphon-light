@@ -19,8 +19,8 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
 
     @Override
     public void startup(ICrawler crawler) {
+        IProcessor processor = processorChain();
         successes.add(builtinRequest -> {
-            IProcessor processor = processorChain();
             BuiltinRequest.RequestResult result = builtinRequest.getRequestResult();
             Object data = result.get();
             processor.process(data, builtinRequest, crawler);
