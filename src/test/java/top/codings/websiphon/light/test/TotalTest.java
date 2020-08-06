@@ -9,15 +9,16 @@ import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
+import java.util.concurrent.TimeUnit;
 
 public class TotalTest {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws Exception {
         new TotalTest().test();
     }
 
     @Test
-    public void test() throws InterruptedException {
+    public void test() throws Exception {
         QpsDataStat stat = new QpsDataStat(30);
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
@@ -35,6 +36,10 @@ public class TotalTest {
         crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
                 .uri(URI.create("https://www.baidu.com"))
                 .build()));
-        Thread.currentThread().join();
+        /*TimeUnit.SECONDS.sleep(1);
+        crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
+                .uri(URI.create("https://www.baidu.com?a=1"))
+                .build()));
+        Thread.currentThread().join();*/
     }
 }

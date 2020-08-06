@@ -9,14 +9,22 @@ import top.codings.websiphon.light.function.IFilter;
 import top.codings.websiphon.light.requester.support.DistinctRequester;
 
 public class FiltrateCrawler extends CombineCrawler implements FilterableCrawler {
-    private IFilter<String, Boolean> iFilter;
+    //    private IFilter<String, Boolean> iFilter;
     private CleanableFilter cleanableFilter;
 
     public FiltrateCrawler() {
-        // 初始化过滤器
-        iFilter = new ArticleFilter();
-        // 使用组合过滤器
-        cleanableFilter = new CombineFilter(iFilter);
+        this(null);
+    }
+
+    public FiltrateCrawler(IFilter<String, Boolean> iFilter) {
+        if (iFilter instanceof CleanableFilter) {
+            cleanableFilter = (CleanableFilter) iFilter;
+        } else if (null == iFilter) {
+            // 使用组合过滤器
+            cleanableFilter = new CombineFilter(new ArticleFilter());
+        } else {
+            throw new RuntimeException("去重功能爬虫暂不支持除基础和可清除之外的过滤器");
+        }
     }
 
     @Override

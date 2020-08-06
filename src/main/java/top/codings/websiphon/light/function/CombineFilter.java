@@ -43,4 +43,12 @@ public class CombineFilter implements CleanableFilter<String, Boolean> {
     public void clear() {
         localFilter = BloomFilter.create(Funnels.stringFunnel(Charset.forName("utf-8")), maxCount, fpp);
     }
+
+    /**
+     * 获取被组合的过滤器
+     * @return
+     */
+    public IFilter<String, Boolean> target() {
+        return outerFilter;
+    }
 }
