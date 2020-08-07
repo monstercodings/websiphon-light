@@ -31,22 +31,24 @@ public class StatRequester extends CombineRequester implements AsyncRequester {
 
     @Override
     public void init() {
-        exe = Executors.newSingleThreadExecutor();
-        exe.submit(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    TimeUnit.MILLISECONDS.sleep(dataStat.getRefreshTimestamp());
-                    if (debug) {
-                        log.info("\n{}", JSON.toJSONString(dataStat.output(), true));
+        if (dataStat.getRefreshTimestamp() > 0) {
+            exe = Executors.newSingleThreadExecutor();
+            exe.submit(() -> {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(dataStat.getRefreshTimestamp());
+                        if (debug) {
+                            log.info("\n{}", JSON.toJSONString(dataStat.output(), true));
+                        }
+                        dataStat.refresh();
+                    } catch (InterruptedException e) {
+                        return;
+                    } catch (Exception e) {
+                        log.error("爬虫统计异常", e);
                     }
-                    dataStat.refresh();
-                } catch (InterruptedException e) {
-                    return;
-                } catch (Exception e) {
-                    log.error("爬虫统计异常", e);
                 }
-            }
-        });
+            });
+        }
         super.init();
     }
 
