@@ -6,7 +6,7 @@
 
     <groupId>top.codings</groupId>
     <artifactId>websiphon-light</artifactId>
-    <version>0.0.7</version>
+    <version>0.0.9</version>
 
     <parent>
         <artifactId>root-pom</artifactId>
@@ -17,7 +17,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <java.version>14</java.version>
+        <java.version>11</java.version>
         <skipTests>true</skipTests>
         <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
@@ -108,12 +108,12 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.6.0</version>
                     <configuration>
-                        <source>14</source>
-                        <target>14</target>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <compilerVersion>${java.version}</compilerVersion>
                         <verbose>true</verbose>
                         <fork>true</fork>
                         <encoding>UTF-8</encoding>
-                        <compilerVersion>14</compilerVersion>
                     </configuration>
                 </plugin>
             </plugins>

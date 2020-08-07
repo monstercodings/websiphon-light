@@ -66,8 +66,9 @@ public class RateLimitRequester extends CombineRequester implements AsyncRequest
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     Inner inner = timeoutQueue.take();
-                    token.release();
                     log.warn("请求对象超时 -> {} | {}", inner.status.text, inner.request.httpRequest.uri());
+                    token.release();
+                    inner.request.release();
                     verifyBusy();
                     /*switch (inner.status) {
                         case REQ -> {

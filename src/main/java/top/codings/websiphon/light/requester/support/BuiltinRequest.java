@@ -7,7 +7,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 @Getter
-public class BuiltinRequest implements Comparable {
+public class BuiltinRequest {
     HttpRequest httpRequest;
     HttpResponse<byte[]> httpResponse;
     @Setter
@@ -31,9 +31,15 @@ public class BuiltinRequest implements Comparable {
         this.httpResponse = httpResponse;
     }
 
-    @Override
-    public int compareTo(Object o) {
-        return 0;
+    /**
+     * 释放所持有的全部资源<br/>
+     * 帮助GC快速回收
+     */
+    public void release() {
+        httpRequest = null;
+        httpResponse = null;
+        userData = null;
+        requestResult = null;
     }
 
     public static class RequestResult {
