@@ -48,7 +48,7 @@ public class FakeRequester extends CombineRequester implements AsyncRequester {
                         .newBuilder()
                         .uri(httpRequest.uri())
                         .method(httpRequest.method(), httpRequest.bodyPublisher().orElse(HttpRequest.BodyPublishers.noBody()))
-                        .version(httpRequest.version().orElse(HttpClient.Version.HTTP_1_1))
+                        .version(httpRequest.version().orElse(HttpClient.Version.HTTP_2))
                         .timeout(httpRequest.timeout().orElse(Duration.ofSeconds(30)))
                         .expectContinue(httpRequest.expectContinue());
                 builtHeaders.forEach((k, v) -> builder.header(k, v));

@@ -46,16 +46,16 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
         try {
             SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
             sslContext.init(null, BuiltinTrustManager.get(), null);
-            executorService = Executors.newSingleThreadExecutor();
+            executorService = Executors.newCachedThreadPool();
             client = HttpClient.newBuilder()
                     .executor(executorService)
                     .connectTimeout(Duration.ofSeconds(30))
-                    .version(HttpClient.Version.HTTP_1_1)
+//                    .version(HttpClient.Version.HTTP_1_1)
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .sslContext(sslContext)
                     .sslParameters(new SSLParameters())
                     //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
-                    //                .authenticator(Authenticator.getDefault())
+//                                    .authenticator(Authenticator.getDefault())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("初始化请求器失败", e);
@@ -67,8 +67,8 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
         try {
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
-                    .whenCompleteAsync((httpResponse, throwable) -> request.requestResult = new BuiltinRequest.RequestResult())
-                    .thenApplyAsync(httpResponse -> {
+                    .whenComplete((httpResponse, throwable) -> request.requestResult = new BuiltinRequest.RequestResult())
+                    .thenApply(httpResponse -> {
                         if (null == httpResponse) return null;
                         String contentType = null;
                         try {
@@ -121,7 +121,7 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                             // TODO 相关清理操作
                         }
                     })
-                    .exceptionallyAsync(throwable -> {
+                    .exceptionally(throwable -> {
                         try {
                             request.requestResult.succeed = false;
                             request.requestResult.throwable = throwable.getCause();
@@ -130,7 +130,7 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                         }
                         return request;
                     })
-                    .whenCompleteAsync((builtinRequest, throwable) -> responseHandler.push(request))
+                    .whenComplete((builtinRequest, throwable) -> responseHandler.push(request))
                     ;
         } catch (Exception e) {
             log.error("内置请求器异常", e);
