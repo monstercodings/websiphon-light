@@ -64,7 +64,7 @@ public class StatRequester extends CombineRequester implements AsyncRequester {
     @Override
     public CompletableFuture<BuiltinRequest> executeAsync(BuiltinRequest request) {
         dataStat.getRequestCountTotal().increment();
-        return requester.executeAsync(request).whenComplete((builtinRequest, throwable) -> {
+        return requester.executeAsync(request).whenCompleteAsync((builtinRequest, throwable) -> {
             if (builtinRequest.requestResult.succeed) {
                 dataStat.getNetworkRequestSuccessCountTotal().increment();
             }

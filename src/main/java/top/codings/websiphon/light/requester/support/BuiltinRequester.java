@@ -67,8 +67,8 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
         try {
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
-                    .whenComplete((httpResponse, throwable) -> request.requestResult = new BuiltinRequest.RequestResult())
-                    .thenApply(httpResponse -> {
+                    .whenCompleteAsync((httpResponse, throwable) -> request.requestResult = new BuiltinRequest.RequestResult())
+                    .thenApplyAsync(httpResponse -> {
                         if (null == httpResponse) return null;
                         String contentType = null;
                         try {
@@ -121,7 +121,7 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                             // TODO 相关清理操作
                         }
                     })
-                    .exceptionally(throwable -> {
+                    .exceptionallyAsync(throwable -> {
                         try {
                             request.requestResult.succeed = false;
                             request.requestResult.throwable = throwable.getCause();
@@ -130,7 +130,7 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                         }
                         return request;
                     })
-                    .whenComplete((builtinRequest, throwable) -> responseHandler.push(request))
+                    .whenCompleteAsync((builtinRequest, throwable) -> responseHandler.push(request))
                     ;
         } catch (Exception e) {
             log.error("内置请求器异常", e);

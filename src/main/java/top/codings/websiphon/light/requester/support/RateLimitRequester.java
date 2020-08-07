@@ -49,7 +49,7 @@ public class RateLimitRequester extends CombineRequester implements AsyncRequest
                     Inner inner = new Inner(request);
                     timeoutQueue.offer(inner);
                     requester.executeAsync(request)
-                            .whenComplete((aVoid, throwable) -> {
+                            .whenCompleteAsync((aVoid, throwable) -> {
                                 if (timeoutQueue.remove(inner)) token.release();
                                 verifyBusy();
                             })
