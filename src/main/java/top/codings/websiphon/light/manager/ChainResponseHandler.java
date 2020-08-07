@@ -52,6 +52,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
                             log.error("响应处理发生异常", e);
                         } finally {
                             token.release();
+                            request.release();
 //                            log.debug("当前处理令牌剩余 [{}]", token.availablePermits());
                             // 检查爬虫是否已空闲
                             if (crawler != null && !crawler.isBusy() && lock.tryLock()) {

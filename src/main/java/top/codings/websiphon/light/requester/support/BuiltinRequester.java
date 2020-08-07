@@ -63,7 +63,7 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
     }
 
     @Override
-    public CompletableFuture<BuiltinRequest> executeAsync(BuiltinRequest request) {
+    public CompletableFuture<BuiltinRequest> executeAsync(final BuiltinRequest request) {
         try {
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
