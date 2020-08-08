@@ -26,9 +26,13 @@ public class ApacheRequest implements IRequest<HttpRequestBase, HttpResponse> {
 
     @Override
     public void release() {
-        HttpClientUtils.closeQuietly(httpResponse);
+        if (null != httpResponse) {
+            HttpClientUtils.closeQuietly(httpResponse);
+        }
         httpRequest = null;
         httpResponse = null;
+        requestResult.setData(null);
+        requestResult.setThrowable(null);
         requestResult = null;
         userData = null;
     }

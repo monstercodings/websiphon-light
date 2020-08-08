@@ -56,7 +56,8 @@ public interface IRequester<T extends IRequest> {
                 try {
                     String className = config.getRequesterClass();
                     if (StringUtils.isBlank(className)) {
-                        className = ApacheAsyncRequester.class.getName();
+//                        className = ApacheAsyncRequester.class.getName();
+                        throw new IllegalArgumentException("请设定请求器全限定类名");
                     }
                     requester = (IRequester) Class.forName(
                             className,

@@ -107,7 +107,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
 
     private void verifyBusy() {
         if (queue.isEmpty() && timeoutQueue.isEmpty() && !crawler.wrapper().isBusy()) {
-//            log.warn("请求器执行结束任务操作");
+            log.warn("请求器执行结束任务操作");
             IResponseHandler responseHandler = getResponseHandler();
             if (responseHandler instanceof QueueResponseHandler) {
                 ((QueueResponseHandler) responseHandler).whenFinish(crawler.wrapper());

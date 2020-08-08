@@ -41,6 +41,8 @@ public class CombineFilter implements CleanableFilter<String, Boolean> {
 
     @Override
     public void clear() {
+        localFilter = null;
+        System.gc();
         localFilter = BloomFilter.create(Funnels.stringFunnel(Charset.forName("utf-8")), maxCount, fpp);
     }
 

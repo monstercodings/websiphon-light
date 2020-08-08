@@ -22,13 +22,13 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
     public void startup(ICrawler crawler) {
         IProcessor processor = processorChain();
         successes.add(request -> {
-            BuiltinRequest.RequestResult result = request.getRequestResult();
+            IRequest.RequestResult result = request.getRequestResult();
             Object data = result.get();
             processor.process(data, request, crawler);
             return request;
         });
         errors.add(request -> {
-            BuiltinRequest.RequestResult result = request.getRequestResult();
+            IRequest.RequestResult result = request.getRequestResult();
             Throwable throwable = result.cause();
             handleError(request, throwable, crawler);
 //            log.error("发生异常 -> {}", throwable.getClass());
@@ -39,7 +39,7 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
 
     @Override
     protected void handle(IRequest request, ICrawler crawler) throws Exception {
-        BuiltinRequest.RequestResult result = request.getRequestResult();
+        IRequest.RequestResult result = request.getRequestResult();
         if (result.isSucceed()) {
             handleSucceed(request);
         } else {

@@ -19,64 +19,55 @@ import java.net.http.HttpRequest;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class TotalTest {
+    private static AtomicBoolean keep = new AtomicBoolean(true);
 
     public static void main(String[] args) throws Exception {
         TotalTest test = new TotalTest();
         ICrawler crawler = test.startup();
 
 //        test.createHttpServer();
-        // 这个线程不断读取引用队列，当弱引用指向的对象呗回收时，该引用就会被加入到引用队列中
-        /*new Thread(() -> {
-            int count = 0;
-            while (true) {
-                Reference<? extends IRequest> poll = QUEUE.poll();
-                if (poll != null) {
-                    count++;
-                    System.out.println("--- 虚引用对象被jvm回收了 ---- " + poll);
-                    set.remove(poll);
-//                    System.out.println("--- 回收对象 ---- " + poll.get());
-                }
-                Thread.onSpinWait();
-            }
-        }).start();*/
-        /*new Thread(() -> {
-            try {
-                Thread.sleep(30000);
-                System.out.println("开始启动填充内存");
-                List<Object> objects = new LinkedList<>();
-                while (!stop.get()) {
-                    Thread.sleep(1000);
-                    objects.add(new byte[1024 * 1000]);
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                Thread.currentThread().interrupt();
-            }
-        }).start();*/
-        for (; ; ) {
-            for (int i = 0; i < 100; i++) {
+        while (keep.get()) {
+            for (int i = 0; i < 1; i++) {
                 /*IRequest request = new BuiltinRequest(HttpRequest.newBuilder()
                         .uri(URI.create("http://192.168.1.117:8080/test"))
                         .build());*/
-                /*crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
-                        .uri(URI.create("http://192.168.1.117:8080/test"))
-                        .build()));*/
-                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
+                crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
+                        .uri(URI.create("http://192.168.0.106:8080/header"))
+                        .build()));
+                crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
+                        .uri(URI.create("http://192.168.0.106:8080/header"))
+                        .build()));
+//                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
 //                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
             }
             Thread.sleep(500);
-//            break;
+            break;
         }
+//        System.out.println("停止请求");
     }
 
     private void createHttpServer() throws IOException {
-        byte[] content = "hello".getBytes("utf-8");
+        byte[] content = "ok".getBytes("utf-8");
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
-        server.createContext("/test", exchange -> {
+        server.createContext("/stop", exchange -> {
             try {
+                keep.set(false);
+                exchange.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+                exchange.sendResponseHeaders(200, content.length);
+                OutputStream os = exchange.getResponseBody();
+                os.write(content);
+                os.flush();
+            } finally {
+                exchange.close();
+            }
+        });
+        server.createContext("/gc", exchange -> {
+            try {
+                System.gc();
                 exchange.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
                 exchange.sendResponseHeaders(200, content.length);
                 OutputStream os = exchange.getResponseBody();
@@ -90,20 +81,20 @@ public class TotalTest {
     }
 
     public ICrawler startup() throws Exception {
-        QpsDataStat stat = new QpsDataStat(1000);
+        QpsDataStat stat = new QpsDataStat(0);
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
                         .name("我的测试爬虫")
                         .version("0.0.1")
-                        .maxNetworkConcurrency(100000)
+                        .maxNetworkConcurrency(100)
                         .maxConcurrentProcessing(Runtime.getRuntime().availableProcessors())
                         .responseHandlerImplClass("top.codings.websiphon.light.test.dependent.TestResponseHandler")
-//                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheAsyncRequester")
+                        .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
                         .build())
                 .wrapBy(new StatCrawler<>(stat, true))
                 .wrapBy(new FakeCrawler())
-//                .wrapBy(new FiltrateCrawler())
-//                .wrapBy(new RateLimitCrawler())
+                .wrapBy(new FiltrateCrawler())
+                .wrapBy(new RateLimitCrawler())
                 ;
         crawler.startup();
         return crawler;
