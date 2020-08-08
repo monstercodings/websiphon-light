@@ -19,6 +19,11 @@ public class ApacheRequest implements IRequest<HttpRequestBase, HttpResponse> {
         this.httpRequest = httpRequest;
     }
 
+    public ApacheRequest(HttpRequestBase httpRequest, Object userData) {
+        this.httpRequest = httpRequest;
+        this.userData = userData;
+    }
+
     @Override
     public void release() {
         HttpClientUtils.closeQuietly(httpResponse);
