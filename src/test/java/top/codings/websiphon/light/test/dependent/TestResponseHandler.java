@@ -15,7 +15,13 @@ import top.codings.websiphon.light.requester.support.BuiltinRequest;
 public class TestResponseHandler extends StatResponseHandler {
     @Override
     protected IProcessor processorChain() {
-        return new Text2DocProcessor()
+        return new AbstractProcessor() {
+            @Override
+            protected Object process0(Object data, BuiltinRequest request, ICrawler crawler) throws Exception {
+                return null;
+            }
+        };
+        /*return new Text2DocProcessor()
                 .next(new AbstractProcessor<Document>() {
                     @Override
                     protected Object process0(Document data, BuiltinRequest request, ICrawler crawler) throws Exception {
@@ -35,12 +41,11 @@ public class TestResponseHandler extends StatResponseHandler {
                         System.out.println(JSON.toJSONString(data, true));
                         return null;
                     }
-                });
+                });*/
     }
 
     @Override
     protected void handleError(BuiltinRequest request, Throwable throwable, ICrawler crawler) {
-        System.err.println(String.format("爬虫 -> %s", ((CombineCrawler) crawler).wrapper().getClass().getName()));
         System.err.println("发生异常 -> " + throwable.getClass().getName());
     }
 
@@ -48,6 +53,6 @@ public class TestResponseHandler extends StatResponseHandler {
     public void whenFinish(ICrawler crawler) {
         ((CombineCrawler) crawler).find(FilterableCrawler.class).ifPresent(FilterableCrawler::clear);
         System.out.println("任务已全部完成");
-        crawler.shutdown();
+//        crawler.shutdown();
     }
 }
