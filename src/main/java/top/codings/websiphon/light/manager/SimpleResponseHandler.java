@@ -3,6 +3,7 @@ package top.codings.websiphon.light.manager;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.processor.IProcessor;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.util.List;
@@ -14,30 +15,30 @@ import java.util.function.Function;
  */
 @Slf4j
 public abstract class SimpleResponseHandler extends ChainResponseHandler {
-    protected List<Function<BuiltinRequest, BuiltinRequest>> successes = new CopyOnWriteArrayList<>();
-    protected List<Function<BuiltinRequest, BuiltinRequest>> errors = new CopyOnWriteArrayList<>();
+    protected List<Function<IRequest, IRequest>> successes = new CopyOnWriteArrayList<>();
+    protected List<Function<IRequest, IRequest>> errors = new CopyOnWriteArrayList<>();
 
     @Override
     public void startup(ICrawler crawler) {
         IProcessor processor = processorChain();
-        successes.add(builtinRequest -> {
-            BuiltinRequest.RequestResult result = builtinRequest.getRequestResult();
+        successes.add(request -> {
+            BuiltinRequest.RequestResult result = request.getRequestResult();
             Object data = result.get();
-            processor.process(data, builtinRequest, crawler);
-            return builtinRequest;
+            processor.process(data, request, crawler);
+            return request;
         });
-        errors.add(builtinRequest -> {
-            BuiltinRequest.RequestResult result = builtinRequest.getRequestResult();
+        errors.add(request -> {
+            BuiltinRequest.RequestResult result = request.getRequestResult();
             Throwable throwable = result.cause();
-            handleError(builtinRequest, throwable, crawler);
+            handleError(request, throwable, crawler);
 //            log.error("发生异常 -> {}", throwable.getClass());
-            return builtinRequest;
+            return request;
         });
         super.startup(crawler);
     }
 
     @Override
-    protected void handle(BuiltinRequest request, ICrawler crawler) throws Exception {
+    protected void handle(IRequest request, ICrawler crawler) throws Exception {
         BuiltinRequest.RequestResult result = request.getRequestResult();
         if (result.isSucceed()) {
             handleSucceed(request);
@@ -46,11 +47,11 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
         }
     }
 
-    private void handleSucceed(BuiltinRequest request) {
-        BuiltinRequest builtinRequest = request;
+    private void handleSucceed(IRequest request) {
+        IRequest req = request;
         try {
-            for (Function<BuiltinRequest, BuiltinRequest> success : successes) {
-                if ((builtinRequest = success.apply(builtinRequest)) == null) {
+            for (Function<IRequest, IRequest> success : successes) {
+                if ((req = success.apply(req)) == null) {
                     break;
                 }
             }
@@ -59,11 +60,11 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
         }
     }
 
-    private void handleError(BuiltinRequest request) {
+    private void handleError(IRequest request) {
         try {
-            BuiltinRequest builtinRequest = request;
-            for (Function<BuiltinRequest, BuiltinRequest> error : errors) {
-                if ((builtinRequest = error.apply(builtinRequest)) == null) {
+            IRequest req = request;
+            for (Function<IRequest, IRequest> error : errors) {
+                if ((req = error.apply(req)) == null) {
                     break;
                 }
             }
@@ -85,5 +86,5 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
      * @param request
      * @param throwable
      */
-    protected abstract void handleError(BuiltinRequest request, Throwable throwable, ICrawler crawler);
+    protected abstract void handleError(IRequest request, Throwable throwable, ICrawler crawler);
 }

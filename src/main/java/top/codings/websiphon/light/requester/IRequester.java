@@ -1,9 +1,10 @@
 package top.codings.websiphon.light.requester;
 
+import org.apache.commons.lang3.StringUtils;
+import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.manager.IResponseHandler;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
-import top.codings.websiphon.light.requester.support.BuiltinRequester;
+import top.codings.websiphon.light.requester.support.ApacheAsyncRequester;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -37,20 +38,34 @@ public interface IRequester<T extends IRequest> {
 
     IResponseHandler getResponseHandler();
 
-    static RequesterBuilder newBuilder(boolean sync) {
-        return new RequesterBuilder(sync);
+    static RequesterBuilder newBuilder(CrawlerConfig config) {
+        return new RequesterBuilder(config);
     }
 
     class RequesterBuilder {
         private IRequester requester;
         private boolean sync;
 
-        public RequesterBuilder(boolean sync) {
-            this.sync = sync;
+        public RequesterBuilder(CrawlerConfig config) {
+            this.sync = config.isSync();
             if (sync) {
-                throw new RuntimeException("同步请求器暂未支持");
+                throw new RuntimeException("同步模式暂未支持");
             } else {
-                requester = new BuiltinRequester();
+//                requester = new BuiltinRequester();
+//                requester = new ApacheAsyncRequester();
+                try {
+                    String className = config.getRequesterClass();
+                    if (StringUtils.isBlank(className)) {
+                        className = ApacheAsyncRequester.class.getName();
+                    }
+                    requester = (IRequester) Class.forName(
+                            className,
+                            true,
+                            config.getClassLoader() == null ? ClassLoader.getSystemClassLoader() : config.getClassLoader()
+                    ).getConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException("初始化请求器失败", e);
+                }
             }
         }
 

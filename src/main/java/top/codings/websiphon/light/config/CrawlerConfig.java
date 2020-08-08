@@ -31,6 +31,10 @@ public class CrawlerConfig {
      */
     private String responseHandlerImplClass;
     /**
+     * 请求器的全限定类名
+     */
+    private String requesterClass;
+    /**
      * 响应处理器的加载器
      */
     private ClassLoader classLoader;

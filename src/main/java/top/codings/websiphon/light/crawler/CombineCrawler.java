@@ -1,6 +1,7 @@
 package top.codings.websiphon.light.crawler;
 
 import top.codings.websiphon.light.config.CrawlerConfig;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 
@@ -23,7 +24,7 @@ public abstract class CombineCrawler implements ICrawler {
     }
 
     @Override
-    public void push(BuiltinRequest request) {
+    public void push(IRequest request) {
         if (next != null) next.push(request);
     }
 

@@ -1,6 +1,9 @@
 package top.codings.websiphon.light.requester.support;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.Header;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.message.BasicHeader;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
@@ -41,7 +44,7 @@ public class FakeRequester extends CombineRequester<IRequest> implements AsyncRe
 
     @Override
     public CompletableFuture<IRequest> executeAsync(IRequest request) {
-        if (request.getHttpRequest() instanceof HttpRequest) {
+        if (request instanceof BuiltinRequest) {
             try {
                 HttpRequest httpRequest = (HttpRequest) request.getHttpRequest();
                 Map<String, List<String>> headers = httpRequest.headers().map();
@@ -64,6 +67,21 @@ public class FakeRequester extends CombineRequester<IRequest> implements AsyncRe
                 requestResult.setThrowable(e);
                 request.setRequestResult(requestResult);
             }
+        } else if (request instanceof ApacheRequest) {
+            HttpRequestBase httpRequestBase = ((ApacheRequest) request).getHttpRequest();
+            if (httpRequestBase.getAllHeaders().length == 0) {
+                httpRequestBase.setHeaders(new Header[]{
+                        new BasicHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"),
+                        new BasicHeader("Accept-Language", "zh-CN,zh;q=0.9"),
+                        new BasicHeader("Cache-Control", "no-cache"),
+                        new BasicHeader("Connection", "keep-alive"),
+                        new BasicHeader("Pragma", "no-cache"),
+                        new BasicHeader("DNT", "1"),
+                        new BasicHeader("Upgrade-Insecure-Requests", "1"),
+                        new BasicHeader("User-agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
+                });
+            }
+            return requester.executeAsync(request);
         }
 
         return CompletableFuture.completedFuture(request);

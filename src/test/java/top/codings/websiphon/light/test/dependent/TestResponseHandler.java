@@ -1,26 +1,28 @@
 package top.codings.websiphon.light.test.dependent;
 
-import com.alibaba.fastjson.JSON;
-import org.jsoup.nodes.Document;
+import lombok.SneakyThrows;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.FilterableCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.function.CombineFilter;
 import top.codings.websiphon.light.manager.StatResponseHandler;
 import top.codings.websiphon.light.processor.AbstractProcessor;
 import top.codings.websiphon.light.processor.IProcessor;
-import top.codings.websiphon.light.processor.support.Text2DocProcessor;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
+import top.codings.websiphon.light.processor.support.JSONProcessor;
+import top.codings.websiphon.light.requester.IRequest;
+
+import java.util.concurrent.locks.ReentrantLock;
 
 public class TestResponseHandler extends StatResponseHandler {
     @Override
     protected IProcessor processorChain() {
-        return new AbstractProcessor() {
+        return new AbstractProcessor<String>() {
             @Override
-            protected Object process0(Object data, BuiltinRequest request, ICrawler crawler) throws Exception {
-                return null;
+            protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
+//                System.out.println("响应内容如下:\n" + data);
+//                Thread.sleep(200);
+                return data;
             }
-        };
+        }.next(new JSONProcessor());
         /*return new Text2DocProcessor()
                 .next(new AbstractProcessor<Document>() {
                     @Override
@@ -45,14 +47,20 @@ public class TestResponseHandler extends StatResponseHandler {
     }
 
     @Override
-    protected void handleError(BuiltinRequest request, Throwable throwable, ICrawler crawler) {
-        System.err.println("发生异常 -> " + throwable.getClass().getName());
+    protected void handleError(IRequest request, Throwable throwable, ICrawler crawler) {
+//        System.err.println("发生异常 -> " + throwable.getClass().getName());
     }
+
+    ReentrantLock lock = new ReentrantLock();
 
     @Override
     public void whenFinish(ICrawler crawler) {
+        if (!lock.tryLock()) {
+            return;
+        }
         ((CombineCrawler) crawler).find(FilterableCrawler.class).ifPresent(FilterableCrawler::clear);
-        System.out.println("任务已全部完成");
+        System.out.println(Thread.currentThread().getName() + ": 任务已全部完成");
+        lock.unlock();
 //        crawler.shutdown();
     }
 }

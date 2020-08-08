@@ -3,6 +3,7 @@ package top.codings.websiphon.light.requester.support;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.function.IFilter;
 import top.codings.websiphon.light.manager.IResponseHandler;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
@@ -53,11 +54,14 @@ public class DistinctRequester extends CombineRequester<IRequest> implements Asy
 
     @Override
     public CompletableFuture<IRequest> executeAsync(IRequest request) {
-        if (request.getHttpRequest() instanceof HttpRequest) {
-            HttpRequest httpRequest = (HttpRequest) request.getHttpRequest();
-            if (filter.put(httpRequest.uri().toString())) {
-                return requester.executeAsync(request);
-            }
+        String url = null;
+        if (request instanceof BuiltinRequest) {
+            url = ((HttpRequest) request.getHttpRequest()).uri().toString();
+        } else if (request instanceof ApacheRequest) {
+            url = ((ApacheRequest) request).getHttpRequest().getURI().toString();
+        }
+        if (StringUtils.isNotBlank(url) && filter.put(url)) {
+            return requester.executeAsync(request);
         }
         return CompletableFuture.completedFuture(request);
     }

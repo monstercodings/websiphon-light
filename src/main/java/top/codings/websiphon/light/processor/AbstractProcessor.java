@@ -3,7 +3,7 @@ package top.codings.websiphon.light.processor;
 import io.netty.util.internal.TypeParameterMatcher;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
+import top.codings.websiphon.light.requester.IRequest;
 
 @Slf4j
 public abstract class AbstractProcessor<T> implements IProcessor {
@@ -25,7 +25,7 @@ public abstract class AbstractProcessor<T> implements IProcessor {
     }
 
     @Override
-    public void process(Object o, BuiltinRequest request, ICrawler crawler) {
+    public void process(Object o, IRequest request, ICrawler crawler) {
         for (AbstractProcessor p = root; p != null; p = p.next) {
             if (p.matcher.match(o)) {
                 try {
@@ -59,5 +59,5 @@ public abstract class AbstractProcessor<T> implements IProcessor {
         return PROCESSORS.get(0);
     }*/
 
-    protected abstract Object process0(T data, BuiltinRequest request, ICrawler crawler) throws Exception;
+    protected abstract Object process0(T data, IRequest request, ICrawler crawler) throws Exception;
 }

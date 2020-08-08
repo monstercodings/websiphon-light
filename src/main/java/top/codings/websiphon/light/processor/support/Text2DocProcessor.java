@@ -7,14 +7,21 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.processor.AbstractProcessor;
+import top.codings.websiphon.light.requester.IRequest;
+import top.codings.websiphon.light.requester.support.ApacheRequest;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 @Slf4j
 @NoArgsConstructor
 public class Text2DocProcessor extends AbstractProcessor<String> {
     @Override
-    protected Object process0(String data, BuiltinRequest request, ICrawler crawler) throws Exception {
-        int code = request.getHttpResponse().statusCode();
+    protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
+        int code = -1;
+        if (request instanceof BuiltinRequest) {
+            code = ((BuiltinRequest) request).getHttpResponse().statusCode();
+        } else if (request instanceof ApacheRequest) {
+            code = ((ApacheRequest) request).getHttpResponse().getStatusLine().getStatusCode();
+        }
         if (code < 200 || code >= 300) {
             return null;
         }

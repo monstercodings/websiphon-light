@@ -13,6 +13,9 @@ import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.*;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.net.Socket;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
@@ -20,7 +23,9 @@ import java.nio.charset.Charset;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
@@ -67,7 +72,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
         try {
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
-                    .whenCompleteAsync((httpResponse, throwable) -> request.requestResult = new BuiltinRequest.RequestResult())
+                    .whenCompleteAsync((httpResponse, throwable) -> request.requestResult = new IRequest.RequestResult())
                     .thenApplyAsync(httpResponse -> {
                         if (null == httpResponse) return null;
                         String contentType = null;

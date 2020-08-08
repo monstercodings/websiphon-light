@@ -52,7 +52,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     timeoutQueue.offer(inner);
                     requester.executeAsync(request)
                             .whenCompleteAsync((aVoid, throwable) -> {
-                                if (timeoutQueue.remove(inner)) token.release();
+                                if (timeoutQueue.remove(inner)) {
+                                    token.release();
+                                    inner.release();
+                                }
                                 verifyBusy();
                             })
                     ;
@@ -103,7 +106,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
 
     private void verifyBusy() {
         if (queue.isEmpty() && timeoutQueue.isEmpty() && !crawler.wrapper().isBusy()) {
-            log.warn("触发强制结束任务");
+//            log.warn("请求器执行结束任务操作");
             IResponseHandler responseHandler = getResponseHandler();
             if (responseHandler instanceof QueueResponseHandler) {
                 ((QueueResponseHandler) responseHandler).whenFinish(crawler.wrapper());
@@ -154,6 +157,11 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
         IRequest request;
         long trigger;
         Status status;
+
+        public void release() {
+            request = null;
+            status = null;
+        }
 
         @AllArgsConstructor
         public enum Status {

@@ -1,11 +1,14 @@
 package top.codings.websiphon.light.test;
 
 import com.sun.net.httpserver.HttpServer;
+import org.apache.http.client.methods.HttpGet;
 import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
+import top.codings.websiphon.light.requester.IRequest;
+import top.codings.websiphon.light.requester.support.ApacheRequest;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.io.IOException;
@@ -23,14 +26,49 @@ public class TotalTest {
     public static void main(String[] args) throws Exception {
         TotalTest test = new TotalTest();
         ICrawler crawler = test.startup();
-        test.createHttpServer();
-        for (; ; ) {
-            for (int i = 0; i < 10000; i++) {
-                crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
-                        .uri(URI.create("http://127.0.0.1:8080/test"))
-                        .build()));
+
+//        test.createHttpServer();
+        // 这个线程不断读取引用队列，当弱引用指向的对象呗回收时，该引用就会被加入到引用队列中
+        /*new Thread(() -> {
+            int count = 0;
+            while (true) {
+                Reference<? extends IRequest> poll = QUEUE.poll();
+                if (poll != null) {
+                    count++;
+                    System.out.println("--- 虚引用对象被jvm回收了 ---- " + poll);
+                    set.remove(poll);
+//                    System.out.println("--- 回收对象 ---- " + poll.get());
+                }
+                Thread.onSpinWait();
             }
-            Thread.sleep(100);
+        }).start();*/
+        /*new Thread(() -> {
+            try {
+                Thread.sleep(30000);
+                System.out.println("开始启动填充内存");
+                List<Object> objects = new LinkedList<>();
+                while (!stop.get()) {
+                    Thread.sleep(1000);
+                    objects.add(new byte[1024 * 1000]);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
+            }
+        }).start();*/
+        for (; ; ) {
+            for (int i = 0; i < 100; i++) {
+                /*IRequest request = new BuiltinRequest(HttpRequest.newBuilder()
+                        .uri(URI.create("http://192.168.1.117:8080/test"))
+                        .build());*/
+                /*crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
+                        .uri(URI.create("http://192.168.1.117:8080/test"))
+                        .build()));*/
+                crawler.push(new ApacheRequest(new HttpGet("http://192.168.1.117:8080/test")));
+//                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
+            }
+            Thread.sleep(500);
+//            break;
         }
     }
 
@@ -57,14 +95,16 @@ public class TotalTest {
                 CrawlerConfig.builder()
                         .name("我的测试爬虫")
                         .version("0.0.1")
-                        .maxNetworkConcurrency(100)
+                        .maxNetworkConcurrency(100000)
                         .maxConcurrentProcessing(Runtime.getRuntime().availableProcessors())
                         .responseHandlerImplClass("top.codings.websiphon.light.test.dependent.TestResponseHandler")
+//                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheAsyncRequester")
                         .build())
                 .wrapBy(new StatCrawler<>(stat, true))
                 .wrapBy(new FakeCrawler())
 //                .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler());
+//                .wrapBy(new RateLimitCrawler())
+                ;
         crawler.startup();
         return crawler;
         /*TimeUnit.SECONDS.sleep(1);

@@ -4,9 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.manager.IResponseHandler;
-import top.codings.websiphon.light.manager.QueueResponseHandler;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 
 @Slf4j
@@ -17,7 +16,11 @@ public class BaseCrawler extends CombineCrawler {
         this.config = config;
         try {
             // 初始化响应处理器
-            responseHandler = (IResponseHandler) Class.forName(config.getResponseHandlerImplClass()).getConstructor().newInstance();
+            responseHandler = (IResponseHandler) Class.forName(
+                    config.getResponseHandlerImplClass(),
+                    true,
+                    config.getClassLoader() == null ? ClassLoader.getSystemClassLoader() : config.getClassLoader()
+            ).getConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException("初始化响应处理器失败", e);
         }
@@ -26,13 +29,13 @@ public class BaseCrawler extends CombineCrawler {
         }*/
         responseHandler.setConfig(config);
         setRequester((CombineRequester) IRequester
-                .newBuilder(config.isSync())
+                .newBuilder(config)
                 .responseHandler(responseHandler)
                 .build());
     }
 
     @Override
-    public void push(BuiltinRequest request) {
+    public void push(IRequest request) {
         getRequester().executeAsync(request);
     }
 

@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.util.concurrent.ExecutorService;
@@ -20,7 +21,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public abstract class ChainResponseHandler implements QueueResponseHandler {
     protected CrawlerConfig config;
     private ExecutorService exe;
-    private LinkedTransferQueue<BuiltinRequest> queue;
+    private LinkedTransferQueue<IRequest> queue;
     private Semaphore token;
     private Lock lock = new ReentrantLock();
 //    private ICrawler crawler;
@@ -38,7 +39,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     // 先阻塞获取任务
-                    BuiltinRequest request = queue.take();
+                    IRequest request = queue.take();
                     // 获取令牌
                     token.acquire();
                     // 将标记位恢复
@@ -93,7 +94,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
     }
 
     @Override
-    public boolean push(BuiltinRequest request) {
+    public boolean push(IRequest request) {
         normal = false;
         return queue.offer(request);
     }
@@ -116,13 +117,13 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
         this.crawler = crawler;
     }*/
 
-    protected void beforeHandle(BuiltinRequest request, ICrawler crawler) throws Exception {
+    protected void beforeHandle(IRequest request, ICrawler crawler) throws Exception {
 
     }
 
-    protected void afterHandle(BuiltinRequest request, ICrawler crawler) throws Exception {
+    protected void afterHandle(IRequest request, ICrawler crawler) throws Exception {
 
     }
 
-    protected abstract void handle(BuiltinRequest request, ICrawler crawler) throws Exception;
+    protected abstract void handle(IRequest request, ICrawler crawler) throws Exception;
 }

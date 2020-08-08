@@ -10,3 +10,6 @@
 2. `缺点`
     * 无法兼容openjdk14以下的版本
     * 相较于Websiphon标准版，功能性稍差，但由于高度灵活，可自行扩展开发标准版的功能
+    
+    
+> -verbose:gc -Xms10m -Xmx10m -Xmn10m
