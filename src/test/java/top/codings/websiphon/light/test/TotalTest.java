@@ -64,7 +64,7 @@ public class TotalTest {
                 /*crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
                         .uri(URI.create("http://192.168.1.117:8080/test"))
                         .build()));*/
-                crawler.push(new ApacheRequest(new HttpGet("http://192.168.1.117:8080/test")));
+                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
 //                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
             }
             Thread.sleep(500);

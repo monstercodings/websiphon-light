@@ -72,9 +72,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                 try {
                     Inner inner = timeoutQueue.take();
                     String url = "";
-                    if (inner.request.getHttpRequest() instanceof HttpRequest) {
-                        HttpRequest httpRequest = (HttpRequest) inner.request.getHttpRequest();
-                        url = httpRequest.uri().toString();
+                    if (inner.request instanceof BuiltinRequest) {
+                        url = ((HttpRequest) inner.request.getHttpRequest()).uri().toString();
+                    } else if (inner.request instanceof ApacheRequest) {
+                        url = ((ApacheRequest) inner.request).getHttpRequest().getURI().toString();
                     }
                     log.warn("请求对象超时 -> {} | {}", inner.status.text, url);
                     token.release();
