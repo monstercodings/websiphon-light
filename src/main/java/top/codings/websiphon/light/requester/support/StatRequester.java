@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.bean.DataStat;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -13,7 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class StatRequester extends CombineRequester implements AsyncRequester {
+public class StatRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest> {
     @Setter
     private boolean debug;
     private DataStat dataStat;
@@ -62,10 +63,10 @@ public class StatRequester extends CombineRequester implements AsyncRequester {
     }
 
     @Override
-    public CompletableFuture<BuiltinRequest> executeAsync(BuiltinRequest request) {
+    public CompletableFuture<IRequest> executeAsync(IRequest request) {
         dataStat.getRequestCountTotal().increment();
         return requester.executeAsync(request).whenCompleteAsync((builtinRequest, throwable) -> {
-            if (builtinRequest.requestResult.succeed) {
+            if (builtinRequest.getRequestResult().isSucceed()) {
                 dataStat.getNetworkRequestSuccessCountTotal().increment();
             }
         });

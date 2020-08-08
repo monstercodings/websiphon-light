@@ -7,7 +7,7 @@ import top.codings.websiphon.light.requester.support.BuiltinRequester;
 
 import java.util.concurrent.CompletableFuture;
 
-public interface IRequester {
+public interface IRequester<T extends IRequest> {
     /**
      * 初始化请求器
      */
@@ -19,7 +19,7 @@ public interface IRequester {
      * @param request 请求对象
      * @return
      */
-    CompletableFuture<BuiltinRequest> executeAsync(BuiltinRequest request);
+    CompletableFuture<T> executeAsync(T request);
 
     /**
      * 关闭请求器

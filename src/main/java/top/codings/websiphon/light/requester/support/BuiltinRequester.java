@@ -9,6 +9,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.*;
@@ -22,12 +23,11 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public class BuiltinRequester extends CombineRequester implements AsyncRequester {
+public class BuiltinRequester extends CombineRequester<BuiltinRequest> implements AsyncRequester<BuiltinRequest> {
     @Setter
     @Getter
     private QueueResponseHandler responseHandler;
@@ -46,9 +46,9 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
         try {
             SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
             sslContext.init(null, BuiltinTrustManager.get(), null);
-            executorService = Executors.newCachedThreadPool();
+//            executorService = Executors.newSingleThreadExecutor();
             client = HttpClient.newBuilder()
-                    .executor(executorService)
+//                    .executor(executorService)
                     .connectTimeout(Duration.ofSeconds(30))
 //                    .version(HttpClient.Version.HTTP_1_1)
                     .followRedirects(HttpClient.Redirect.NORMAL)
@@ -100,22 +100,22 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                             }
                             if (mimeType.contains("text")) {
                                 // 文本解析
-                                request.requestResult.responseType = BuiltinRequest.ResponseType.TEXT;
-                                request.requestResult.data = Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>");
+                                request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
+                                request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
                             } else if (mimeType.contains("json")) {
                                 // JSON解析
-                                request.requestResult.responseType = BuiltinRequest.ResponseType.JSON;
-                                request.requestResult.data = JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}"));
+                                request.requestResult.setResponseType(IRequest.ResponseType.JSON);
+                                request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
                             } else {
                                 // 字节解析
-                                request.requestResult.responseType = BuiltinRequest.ResponseType.UNKNOW;
-                                request.requestResult.data = body;
+                                request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
+                                request.requestResult.setData(body);
                             }
                             return request;
                         } catch (Exception e) {
                             log.error("框架解析响应失败 -> {}", contentType, e);
-                            request.requestResult.succeed = false;
-                            request.requestResult.throwable = e;
+                            request.requestResult.setSucceed(false);
+                            request.requestResult.setThrowable(e);
                             return request;
                         } finally {
                             // TODO 相关清理操作
@@ -123,8 +123,8 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
                     })
                     .exceptionallyAsync(throwable -> {
                         try {
-                            request.requestResult.succeed = false;
-                            request.requestResult.throwable = throwable.getCause();
+                            request.requestResult.setSucceed(false);
+                            request.requestResult.setThrowable(throwable.getCause());
                         } catch (Exception e) {
                             log.error("异常处理入队列失败", e);
                         }
@@ -135,21 +135,11 @@ public class BuiltinRequester extends CombineRequester implements AsyncRequester
         } catch (Exception e) {
             log.error("内置请求器异常", e);
             request.requestResult = new BuiltinRequest.RequestResult();
-            request.requestResult.succeed = false;
-            request.requestResult.throwable = e;
+            request.requestResult.setSucceed(false);
+            request.requestResult.setThrowable(e);
             return CompletableFuture.completedFuture(request);
         }
     }
-
-    /*@Override
-    public void error(BuiltinRequest request) {
-        BuiltinRequest builtinRequest = request;
-        for (Function<BuiltinRequest, BuiltinRequest> error : errors) {
-            if ((builtinRequest = error.apply(builtinRequest)) == null) {
-                break;
-            }
-        }
-    }*/
 
     @Override
     public void shutdown(boolean force) {

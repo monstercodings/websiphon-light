@@ -7,15 +7,17 @@ import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.manager.IResponseHandler;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.SyncRequester;
 
+import java.net.http.HttpRequest;
 import java.util.concurrent.*;
 
 @Slf4j
-public class RateLimitRequester extends CombineRequester implements AsyncRequester, SyncRequester {
+public class RateLimitRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
     private Semaphore token;
     private int maxNetworkConcurrency;
-    private LinkedTransferQueue<BuiltinRequest> queue;
+    private LinkedTransferQueue<IRequest> queue;
     private DelayQueue<Inner> timeoutQueue;
     private ExecutorService exe;
     @Setter
@@ -39,7 +41,7 @@ public class RateLimitRequester extends CombineRequester implements AsyncRequest
         exe.submit(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    BuiltinRequest request;
+                    IRequest request;
                     // 先阻塞获取任务
                     request = queue.take();
                     // 获取令牌
@@ -66,7 +68,12 @@ public class RateLimitRequester extends CombineRequester implements AsyncRequest
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     Inner inner = timeoutQueue.take();
-                    log.warn("请求对象超时 -> {} | {}", inner.status.text, inner.request.httpRequest.uri());
+                    String url = "";
+                    if (inner.request.getHttpRequest() instanceof HttpRequest) {
+                        HttpRequest httpRequest = (HttpRequest) inner.request.getHttpRequest();
+                        url = httpRequest.uri().toString();
+                    }
+                    log.warn("请求对象超时 -> {} | {}", inner.status.text, url);
                     token.release();
                     inner.request.release();
                     verifyBusy();
@@ -105,7 +112,7 @@ public class RateLimitRequester extends CombineRequester implements AsyncRequest
     }
 
     @Override
-    public CompletableFuture<BuiltinRequest> executeAsync(BuiltinRequest request) {
+    public CompletableFuture<IRequest> executeAsync(IRequest request) {
         normal = false;
         queue.offer(request);
         return CompletableFuture.completedFuture(request);
@@ -144,7 +151,7 @@ public class RateLimitRequester extends CombineRequester implements AsyncRequest
 
     private static class Inner implements Delayed {
         int timeout = 120000;
-        BuiltinRequest request;
+        IRequest request;
         long trigger;
         Status status;
 
@@ -157,7 +164,7 @@ public class RateLimitRequester extends CombineRequester implements AsyncRequest
             String text;
         }
 
-        public Inner(BuiltinRequest request) {
+        public Inner(IRequest request) {
             this.request = request;
             trigger = System.currentTimeMillis() + timeout;
             status = Status.REQ;

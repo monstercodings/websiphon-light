@@ -1,12 +1,13 @@
 package top.codings.websiphon.light.requester.support;
 
 import top.codings.websiphon.light.manager.IResponseHandler;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 
 import java.util.concurrent.CompletableFuture;
 
-public abstract class CombineRequester implements IRequester {
-    protected CombineRequester requester;
+public abstract class CombineRequester<T extends IRequest> implements IRequester<T> {
+    protected CombineRequester<T> requester;
 
     protected CombineRequester(CombineRequester requester) {
         this.requester = requester;
@@ -22,7 +23,7 @@ public abstract class CombineRequester implements IRequester {
     }
 
     @Override
-    public CompletableFuture<BuiltinRequest> executeAsync(BuiltinRequest request) {
+    public CompletableFuture<T> executeAsync(T request) {
         if (null != requester) {
             return requester.executeAsync(request);
         }

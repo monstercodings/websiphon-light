@@ -3,6 +3,7 @@ package top.codings.websiphon.light.requester.support;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.requester.IRequest;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,7 +14,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
-public class FakeRequester extends CombineRequester implements AsyncRequester {
+public class FakeRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest> {
     private Map<String, String> builtHeaders;
 
     public FakeRequester(CombineRequester requester) {
@@ -39,29 +40,33 @@ public class FakeRequester extends CombineRequester implements AsyncRequester {
     }
 
     @Override
-    public CompletableFuture<BuiltinRequest> executeAsync(BuiltinRequest request) {
-        try {
-            HttpRequest httpRequest = request.httpRequest;
-            Map<String, List<String>> headers = request.httpRequest.headers().map();
-            if (headers == null || headers.isEmpty()) {
-                HttpRequest.Builder builder = HttpRequest
-                        .newBuilder()
-                        .uri(httpRequest.uri())
-                        .method(httpRequest.method(), httpRequest.bodyPublisher().orElse(HttpRequest.BodyPublishers.noBody()))
-                        .version(httpRequest.version().orElse(HttpClient.Version.HTTP_2))
-                        .timeout(httpRequest.timeout().orElse(Duration.ofSeconds(30)))
-                        .expectContinue(httpRequest.expectContinue());
-                builtHeaders.forEach((k, v) -> builder.header(k, v));
-                request.httpRequest = builder.build();
+    public CompletableFuture<IRequest> executeAsync(IRequest request) {
+        if (request.getHttpRequest() instanceof HttpRequest) {
+            try {
+                HttpRequest httpRequest = (HttpRequest) request.getHttpRequest();
+                Map<String, List<String>> headers = httpRequest.headers().map();
+                if (headers == null || headers.isEmpty()) {
+                    HttpRequest.Builder builder = HttpRequest
+                            .newBuilder()
+                            .uri(httpRequest.uri())
+                            .method(httpRequest.method(), httpRequest.bodyPublisher().orElse(HttpRequest.BodyPublishers.noBody()))
+                            .version(httpRequest.version().orElse(HttpClient.Version.HTTP_2))
+                            .timeout(httpRequest.timeout().orElse(Duration.ofSeconds(30)))
+                            .expectContinue(httpRequest.expectContinue());
+                    builtHeaders.forEach((k, v) -> builder.header(k, v));
+                    request.setHttpRequest(builder.build());
+                }
+                return requester.executeAsync(request);
+            } catch (Exception e) {
+                log.error("伪装请求头失败", e);
+                IRequest.RequestResult requestResult = new IRequest.RequestResult();
+                requestResult.setSucceed(false);
+                requestResult.setThrowable(e);
+                request.setRequestResult(requestResult);
             }
-            return requester.executeAsync(request);
-        } catch (Exception e) {
-            log.error("伪装请求头失败", e);
-            request.requestResult = new BuiltinRequest.RequestResult();
-            request.requestResult.succeed = false;
-            request.requestResult.throwable = e;
-            return CompletableFuture.completedFuture(request);
         }
+
+        return CompletableFuture.completedFuture(request);
     }
 
     @Override

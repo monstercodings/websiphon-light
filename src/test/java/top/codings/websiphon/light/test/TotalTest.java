@@ -36,7 +36,7 @@ public class TotalTest {
                 .wrapBy(new RateLimitCrawler());
         crawler.startup();
         crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
-                .uri(URI.create("http://127.0.0.1:8080/sleep"))
+                .uri(URI.create("https://codings.top"))
                 .build()));
         /*TimeUnit.SECONDS.sleep(1);
         crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
@@ -49,11 +49,11 @@ public class TotalTest {
     public void test1() throws InterruptedException {
         ExecutorService exe = Executors.newSingleThreadExecutor();
         AtomicLong count = new AtomicLong(0);
-        for (long i = 0l; i < Integer.MAX_VALUE + 10l; i++) {
+        for (long i = 0l; i < Integer.MAX_VALUE + 1l; i++) {
             try {
                 exe.submit(() -> {
                     long c = count.incrementAndGet();
-                    TimeUnit.SECONDS.sleep(10);
+                    TimeUnit.SECONDS.sleep(100);
                     if (c >= Integer.MAX_VALUE - 3) {
                         System.out.println("数量 -> " + c);
                     }
