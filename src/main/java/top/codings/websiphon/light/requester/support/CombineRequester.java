@@ -4,8 +4,6 @@ import top.codings.websiphon.light.manager.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class CombineRequester<T extends IRequest> implements IRequester<T> {
@@ -14,7 +12,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
 
     protected CombineRequester(CombineRequester requester) {
         this.requester = requester;
-        Class currentClass = this.getClass();
+        /*Class currentClass = this.getClass();
         Type genericSuperType = currentClass.getGenericSuperclass();
         if (!(genericSuperType instanceof ParameterizedType)) {
             throw new RuntimeException("泛型读取异常");
@@ -27,7 +25,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (actualTypeParam instanceof Class) {
             requestClass = (Class<T>) actualTypeParam;
         }
-        System.out.println(this.getClass().getName() + " -> " + requestClass.getName());
+        System.out.println(this.getClass().getName() + " -> " + requestClass.getName());*/
     }
 
     @Override
