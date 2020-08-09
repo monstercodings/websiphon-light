@@ -93,9 +93,9 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                         IRequest.Status status = inner.request.getStatus();
                         switch (status) {
                             case WAIT, READY, REQUEST -> {
+                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
                                 inner.request.setStatus(IRequest.Status.TIMEOUT);
 //                                inner.request.release();
-                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
                             }
                         }
                     } finally {
@@ -125,6 +125,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     @Override
     public CompletableFuture<IRequest> executeAsync(IRequest request) {
         normal = false;
+        request.setStatus(IRequest.Status.WAIT);
         queue.offer(request);
         return CompletableFuture.completedFuture(request);
     }
