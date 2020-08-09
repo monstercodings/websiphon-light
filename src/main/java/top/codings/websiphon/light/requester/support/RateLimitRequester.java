@@ -28,7 +28,9 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency) {
         super(requester);
         this.maxNetworkConcurrency = maxNetworkConcurrency;
-        token = new Semaphore(maxNetworkConcurrency);
+        if (maxNetworkConcurrency > 0) {
+            token = new Semaphore(maxNetworkConcurrency);
+        }
     }
 
     @Override
@@ -42,8 +44,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     IRequest request;
                     // 先阻塞获取任务
                     request = queue.take();
-                    // 获取令牌
-                    token.acquire();
+                    if (null != token) {
+                        // 获取令牌
+                        token.acquire();
+                    }
                     // 将标记位恢复
                     normal = true;
                     request.setStatus(IRequest.Status.REQUEST);
@@ -52,7 +56,9 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     requester.executeAsync(request)
                             .whenCompleteAsync((aVoid, throwable) -> {
                                 if (timeoutQueue.remove(inner)) {
-                                    token.release();
+                                    if (null != token) {
+                                        token.release();
+                                    }
                                     inner.release();
                                 }
                                 verifyBusy();
@@ -61,7 +67,9 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                 } catch (InterruptedException e) {
                     return;
                 } catch (Exception e) {
-                    token.release();
+                    if (null != token) {
+                        token.release();
+                    }
                     log.error("获取待处理请求对象失败", e);
                 }
             }
@@ -76,8 +84,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     } else if (inner.request instanceof ApacheRequest) {
                         url = ((ApacheRequest) inner.request).getHttpRequest().getURI().toString();
                     }*/
-                    // 先进行令牌的释放，帮助后续网络请求能更快的发送
-                    token.release();
+                    if (null != token) {
+                        // 先进行令牌的释放，帮助后续网络请求能更快的发送
+                        token.release();
+                    }
                     inner.request.lock();
                     try {
                         IRequest.Status status = inner.request.getStatus();
@@ -139,8 +149,9 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     @Override
     public boolean isBusy() {
 //        log.debug("正常状态:{} | 剩余令牌:{} | 队列为空:{}", normal, token.availablePermits(), queue.isEmpty());
+        boolean tokenStatu = token == null ? true : token.availablePermits() == maxNetworkConcurrency;
         return !(normal &&
-                token.availablePermits() == maxNetworkConcurrency &&
+                tokenStatu &&
                 queue.isEmpty())
                 ;
     }
