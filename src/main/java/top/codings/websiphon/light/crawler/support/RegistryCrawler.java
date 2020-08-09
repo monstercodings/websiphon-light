@@ -33,12 +33,12 @@ public class RegistryCrawler extends CombineCrawler implements RegistrableCrawle
 
     @Override
     public void startup() {
+        super.startup();
         if (registryConfig.isEnabled()) {
             registry.setConfig(config, registryConfig);
             registry.setCrawler(this);
             registry.startup();
         }
-        super.startup();
     }
 
     @Override
