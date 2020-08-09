@@ -1,21 +1,15 @@
 package top.codings.websiphon.light.test;
 
 import com.sun.net.httpserver.HttpServer;
-import org.apache.http.client.methods.HttpGet;
 import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
-import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.support.ApacheRequest;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.http.HttpRequest;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -35,14 +29,12 @@ public class TotalTest {
                 /*IRequest request = new BuiltinRequest(HttpRequest.newBuilder()
                         .uri(URI.create("http://192.168.1.117:8080/test"))
                         .build());*/
-                crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
-                        .uri(URI.create("http://192.168.0.106:8080/header"))
-                        .build()));
-                crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
-                        .uri(URI.create("http://192.168.0.106:8080/header"))
-                        .build()));
+                /*crawler.push(new BuiltinRequest(HttpRequest.newBuilder()
+                        .uri(URI.create("https://www.baidu.com"))
+                        .build()));*/
 //                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
 //                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
+                crawler.push("https://www.baidu.com");
             }
             Thread.sleep(500);
             break;
@@ -90,12 +82,12 @@ public class TotalTest {
                         .maxConcurrentProcessing(Runtime.getRuntime().availableProcessors())
                         .responseHandlerImplClass("top.codings.websiphon.light.test.dependent.TestResponseHandler")
                         .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
+//                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheAsyncRequester")
                         .build())
                 .wrapBy(new StatCrawler<>(stat, true))
                 .wrapBy(new FakeCrawler())
                 .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler())
-                ;
+                .wrapBy(new RateLimitCrawler());
         crawler.startup();
         return crawler;
         /*TimeUnit.SECONDS.sleep(1);

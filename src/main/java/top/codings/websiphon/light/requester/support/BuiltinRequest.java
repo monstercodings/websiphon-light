@@ -2,18 +2,15 @@ package top.codings.websiphon.light.requester.support;
 
 import lombok.Getter;
 import lombok.Setter;
-import top.codings.websiphon.light.requester.IRequest;
 
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 @Getter
 @Setter
-public class BuiltinRequest implements IRequest<HttpRequest, HttpResponse<byte[]>> {
-    HttpRequest httpRequest;
-    HttpResponse<byte[]> httpResponse;
-    Object userData;
-    RequestResult requestResult;
+public class BuiltinRequest extends BaseRequest<HttpRequest, HttpResponse<byte[]>> {
+    protected HttpRequest httpRequest;
+    protected HttpResponse<byte[]> httpResponse;
 
     public BuiltinRequest(HttpRequest httpRequest) {
         this.httpRequest = httpRequest;

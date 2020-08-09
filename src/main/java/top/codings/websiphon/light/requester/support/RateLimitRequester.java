@@ -1,6 +1,5 @@
 package top.codings.websiphon.light.requester.support;
 
-import lombok.AllArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
@@ -10,7 +9,6 @@ import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.SyncRequester;
 
-import java.net.http.HttpRequest;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -48,6 +46,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     token.acquire();
                     // 将标记位恢复
                     normal = true;
+                    request.setStatus(IRequest.Status.REQUEST);
                     Inner inner = new Inner(request);
                     timeoutQueue.offer(inner);
                     requester.executeAsync(request)
@@ -71,30 +70,28 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     Inner inner = timeoutQueue.take();
-                    String url = "";
+                    /*String url = "";
                     if (inner.request instanceof BuiltinRequest) {
                         url = ((HttpRequest) inner.request.getHttpRequest()).uri().toString();
                     } else if (inner.request instanceof ApacheRequest) {
                         url = ((ApacheRequest) inner.request).getHttpRequest().getURI().toString();
-                    }
-                    log.warn("请求对象超时 -> {} | {}", inner.status.text, url);
+                    }*/
+                    // 先进行令牌的释放，帮助后续网络请求能更快的发送
                     token.release();
-                    inner.request.release();
-                    verifyBusy();
-                    /*switch (inner.status) {
-                        case REQ -> {
-                            log.warn("请求对象超时 -> {} | {}", inner.status.text, inner.request.httpRequest.uri());
-                            token.release();
-                            if (timeoutQueue.isEmpty() && !crawler.isBusy()) {
-                                if (responseHandler instanceof QueueResponseHandler) {
-                                    ((QueueResponseHandler) responseHandler).whenFinish(crawler.target());
-                                }
+                    inner.request.lock();
+                    try {
+                        IRequest.Status status = inner.request.getStatus();
+                        switch (status) {
+                            case WAIT, READY, REQUEST -> {
+                                inner.request.setStatus(IRequest.Status.TIMEOUT);
+//                                inner.request.release();
+                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
                             }
                         }
-                        default -> {
-                            log.warn("其他状态 -> {} | {}", inner.status.text, inner.request.httpRequest.uri());
-                        }
-                    }*/
+                    } finally {
+                        inner.request.unlock();
+                    }
+                    verifyBusy();
                 } catch (InterruptedException e) {
                     return;
                 } catch (Exception e) {
@@ -107,7 +104,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
 
     private void verifyBusy() {
         if (queue.isEmpty() && timeoutQueue.isEmpty() && !crawler.wrapper().isBusy()) {
-            log.warn("请求器执行结束任务操作");
+//            log.warn("请求器执行结束任务操作");
             IResponseHandler responseHandler = getResponseHandler();
             if (responseHandler instanceof QueueResponseHandler) {
                 ((QueueResponseHandler) responseHandler).whenFinish(crawler.wrapper());
@@ -157,26 +154,14 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
         int timeout = 120000;
         IRequest request;
         long trigger;
-        Status status;
 
         public void release() {
             request = null;
-            status = null;
-        }
-
-        @AllArgsConstructor
-        public enum Status {
-            REQ("请求中"),
-            RESP("响应中"),
-            ERROR("错误"),
-            OVER("处理完成");
-            String text;
         }
 
         public Inner(IRequest request) {
             this.request = request;
             trigger = System.currentTimeMillis() + timeout;
-            status = Status.REQ;
         }
 
         @Override

@@ -17,8 +17,7 @@ public class TestResponseHandler extends StatResponseHandler {
         return new AbstractProcessor<String>() {
             @Override
             protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
-                System.out.println("响应内容如下:\n" + data);
-//                Thread.sleep(200);
+                System.out.println("响应内容如下:\n" + (data.length() > 120 ? data.substring(0, 120) : data));
                 return data;
             }
         }.next(new JSONProcessor());

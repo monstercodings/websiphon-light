@@ -46,12 +46,14 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
                     normal = true;
                     exe.submit(() -> {
                         try {
+                            request.setStatus(IRequest.Status.PROCESS);
                             beforeHandle(request, crawler);
                             handle(request, crawler);
                             afterHandle(request, crawler);
                         } catch (Exception e) {
                             log.error("响应处理发生异常", e);
                         } finally {
+                            request.setStatus(IRequest.Status.FINISH);
                             token.release();
                             request.release();
 //                            log.debug("当前处理令牌剩余 [{}]", token.availablePermits());

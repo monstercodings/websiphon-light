@@ -14,6 +14,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.DeflateInputStreamFactory;
 import org.apache.http.client.entity.GZIPInputStreamFactory;
 import org.apache.http.client.entity.InputStreamFactory;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.FutureCallback;
@@ -137,6 +138,16 @@ public class ApacheAsyncRequester extends CombineRequester<ApacheRequest> implem
     }
 
     @Override
+    public ApacheRequest create(String url) {
+        return create(url, null);
+    }
+
+    @Override
+    public ApacheRequest create(String url, Object userData) {
+        return new ApacheRequest(new HttpGet(url), userData);
+    }
+
+    @Override
     public void shutdown(boolean force) {
         if (null != client) {
             try {
@@ -150,13 +161,101 @@ public class ApacheAsyncRequester extends CombineRequester<ApacheRequest> implem
         }
     }
 
+    private interface Task<T> {
+        void handle(T t) throws Exception;
+    }
+
     @AllArgsConstructor
     private class CustomFutureCallback implements FutureCallback<HttpResponse> {
         private ApacheRequest request;
         private CompletableFuture completableFuture;
 
+
+        private void verifyStatus(Task task) {
+            IRequest.RequestResult requestResult = new IRequest.RequestResult();
+            request.setRequestResult(requestResult);
+            request.lock();
+            try {
+                if (request.getStatus() == IRequest.Status.TIMEOUT) {
+                    request.requestResult.setSucceed(false);
+                    request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
+                    return;
+                }
+                request.setStatus(IRequest.Status.RESPONSE);
+                task.handle(null);
+            } catch (Exception e) {
+                // 发生处理响应异常之后，取消业务处理，直接返回失败结果
+                request.requestResult.setSucceed(false);
+                request.requestResult.setThrowable(e);
+            } finally {
+                request.unlock();
+                completableFuture.completeAsync(() -> request);
+            }
+        }
+
         @Override
         public void completed(HttpResponse result) {
+            verifyStatus(obj -> {
+                byte[] body = EntityUtils.toByteArray(result.getEntity());
+                final Header ceheader = result.getEntity().getContentEncoding();
+                if (ceheader != null) {
+                    final HeaderElement[] codecs = ceheader.getElements();
+                    for (final HeaderElement codec : codecs) {
+                        final String codecname = codec.getName().toLowerCase(Locale.ROOT);
+                        final InputStreamFactory decoderFactory = decoderRegistry.lookup(codecname);
+                        if (decoderFactory != null) {
+                            try (InputStream is = decoderFactory.create(new ByteArrayInputStream(body))) {
+                                body = IOUtils.toByteArray(is);
+                            }
+                        }
+                    }
+                }
+                request.setHttpResponse(result);
+                request.requestResult.setSucceed(true);
+                String mimeType = "text/html";
+                Charset charset = null;
+                Header ct = result.getFirstHeader("content-type");
+                String contentType;
+                if (ct != null) {
+                    contentType = ct.getValue();
+                    Matcher matcher = pattern.matcher(contentType);
+                    if (matcher.find()) {
+                        mimeType = matcher.group(1);
+                        if (StringUtils.isBlank(mimeType)) {
+                            mimeType = "text/html";
+                        }
+                        String charsetStr = matcher.group(3);
+                        if (StringUtils.isNotBlank(charsetStr)) {
+                            if (charsetStr.contains(",")) {
+                                charsetStr = charsetStr.split(",")[0];
+                            }
+                            charset = CharsetUtils.lookup(charsetStr);
+                        }
+                    } else {
+                        log.trace("无字符编码类型[{}] -> {}", contentType, request.getHttpRequest().getURI().toString());
+                        mimeType = "text/html";
+                    }
+                }
+                if (null == charset) {
+                    charset = HttpCharsetUtil.findCharset(body);
+                }
+                if (mimeType.contains("text")) {
+                    // 文本解析
+                    request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
+                    request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
+                } else if (mimeType.contains("json")) {
+                    // JSON解析
+                    request.requestResult.setResponseType(IRequest.ResponseType.JSON);
+                    request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
+                } else {
+                    // 字节解析
+                    request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
+                    request.requestResult.setData(body);
+                }
+                responseHandler.push(request);
+            });
+
+            /*request.setStatus(IRequest.Status.RESPONSE);
             IRequest.RequestResult requestResult = new IRequest.RequestResult();
             request.setRequestResult(requestResult);
             try {
@@ -223,27 +322,25 @@ public class ApacheAsyncRequester extends CombineRequester<ApacheRequest> implem
                 failed(e);
             } finally {
 //                HttpClientUtils.closeQuietly(result);
-            }
+            }*/
         }
 
         @Override
         public void failed(Exception ex) {
-            IRequest.RequestResult requestResult = new IRequest.RequestResult();
-            requestResult.setSucceed(false);
-            requestResult.setThrowable(ex);
-            request.setRequestResult(requestResult);
-            responseHandler.push(request);
-            completableFuture.completeAsync(() -> request);
+            verifyStatus(o -> {
+                request.requestResult.setSucceed(false);
+                request.requestResult.setThrowable(ex);
+                responseHandler.push(request);
+            });
         }
 
         @Override
         public void cancelled() {
-            IRequest.RequestResult requestResult = new IRequest.RequestResult();
-            requestResult.setSucceed(false);
-            requestResult.setThrowable(new RuntimeException("请求被取消"));
-            request.setRequestResult(requestResult);
-            responseHandler.push(request);
-            completableFuture.completeAsync(() -> request);
+            verifyStatus(o -> {
+                request.requestResult.setSucceed(false);
+                request.requestResult.setThrowable(new RuntimeException("请求被取消"));
+                responseHandler.push(request);
+            });
         }
     }
 

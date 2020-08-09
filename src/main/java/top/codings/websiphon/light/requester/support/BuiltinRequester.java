@@ -13,19 +13,16 @@ import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.*;
-import java.lang.ref.PhantomReference;
-import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
 import java.net.Socket;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.Charset;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
@@ -72,70 +69,31 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
         try {
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
-                    .whenCompleteAsync((httpResponse, throwable) -> request.requestResult = new IRequest.RequestResult())
-                    .thenApplyAsync(httpResponse -> {
-                        if (null == httpResponse) return null;
-                        String contentType = null;
+                    .whenCompleteAsync((httpResponse, throwable) -> {
+                        request.requestResult = new IRequest.RequestResult();
+                        request.lock();
                         try {
-                            request.httpRequest = httpResponse.request();
-                            request.httpResponse = httpResponse;
-                            String mimeType;
-                            Charset charset = null;
-                            contentType = httpResponse.headers().firstValue("content-type").orElse("");
-                            Matcher matcher = pattern.matcher(contentType);
-                            if (matcher.find()) {
-                                mimeType = matcher.group(1);
-                                if (StringUtils.isBlank(mimeType)) {
-                                    mimeType = "text/html";
-                                }
-                                String charsetStr = matcher.group(3);
-                                if (StringUtils.isNotBlank(charsetStr)) {
-                                    if (charsetStr.contains(",")) {
-                                        charsetStr = charsetStr.split(",")[0];
-                                    }
-                                    charset = CharsetUtils.lookup(charsetStr);
-                                }
+                            if (request.getStatus() == IRequest.Status.TIMEOUT) {
+                                request.requestResult.setSucceed(false);
+                                request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
+                                return;
+                            }
+                            request.setStatus(IRequest.Status.RESPONSE);
+                            if (httpResponse != null) {
+                                handleSucceed(request, httpResponse);
+                            } else if (throwable != null) {
+                                handleThrowable(request, throwable);
                             } else {
-                                log.trace("无字符编码类型[{}] -> {}", contentType, httpResponse.request().uri());
-                                mimeType = "text/html";
+                                log.error("出现了两参数均为空的异常现象!");
+                                request.requestResult.setSucceed(false);
+                                request.requestResult.setThrowable(new RuntimeException("出现了两参数均为空的异常现象"));
                             }
-                            byte[] body = httpResponse.body();
-                            if (null == charset) {
-                                charset = HttpCharsetUtil.findCharset(body);
-                            }
-                            if (mimeType.contains("text")) {
-                                // 文本解析
-                                request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
-                                request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
-                            } else if (mimeType.contains("json")) {
-                                // JSON解析
-                                request.requestResult.setResponseType(IRequest.ResponseType.JSON);
-                                request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
-                            } else {
-                                // 字节解析
-                                request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
-                                request.requestResult.setData(body);
-                            }
-                            return request;
-                        } catch (Exception e) {
-                            log.error("框架解析响应失败 -> {}", contentType, e);
-                            request.requestResult.setSucceed(false);
-                            request.requestResult.setThrowable(e);
-                            return request;
+                            responseHandler.push(request);
                         } finally {
-                            // TODO 相关清理操作
+                            request.unlock();
                         }
                     })
-                    .exceptionallyAsync(throwable -> {
-                        try {
-                            request.requestResult.setSucceed(false);
-                            request.requestResult.setThrowable(throwable.getCause());
-                        } catch (Exception e) {
-                            log.error("异常处理入队列失败", e);
-                        }
-                        return request;
-                    })
-                    .whenCompleteAsync((builtinRequest, throwable) -> responseHandler.push(request))
+                    .thenApplyAsync(httpResponse -> request)
                     ;
         } catch (Exception e) {
             log.error("内置请求器异常", e);
@@ -144,6 +102,77 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
             request.requestResult.setThrowable(e);
             return CompletableFuture.completedFuture(request);
         }
+    }
+
+    @Override
+    public BuiltinRequest create(String url) {
+        return create(url, null);
+    }
+
+    @Override
+    public BuiltinRequest create(String url, Object userData) {
+        return new BuiltinRequest(
+                HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .build(),
+                userData
+        );
+    }
+
+    private void handleSucceed(BuiltinRequest request, HttpResponse<byte[]> httpResponse) {
+        String contentType = null;
+        try {
+            request.httpRequest = httpResponse.request();
+            request.httpResponse = httpResponse;
+            String mimeType;
+            Charset charset = null;
+            contentType = httpResponse.headers().firstValue("content-type").orElse("");
+            Matcher matcher = pattern.matcher(contentType);
+            if (matcher.find()) {
+                mimeType = matcher.group(1);
+                if (StringUtils.isBlank(mimeType)) {
+                    mimeType = "text/html";
+                }
+                String charsetStr = matcher.group(3);
+                if (StringUtils.isNotBlank(charsetStr)) {
+                    if (charsetStr.contains(",")) {
+                        charsetStr = charsetStr.split(",")[0];
+                    }
+                    charset = CharsetUtils.lookup(charsetStr);
+                }
+            } else {
+                log.trace("无字符编码类型[{}] -> {}", contentType, httpResponse.request().uri());
+                mimeType = "text/html";
+            }
+            byte[] body = httpResponse.body();
+            if (null == charset) {
+                charset = HttpCharsetUtil.findCharset(body);
+            }
+            if (mimeType.contains("text")) {
+                // 文本解析
+                request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
+                request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
+            } else if (mimeType.contains("json")) {
+                // JSON解析
+                request.requestResult.setResponseType(IRequest.ResponseType.JSON);
+                request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
+            } else {
+                // 字节解析
+                request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
+                request.requestResult.setData(body);
+            }
+        } catch (Exception e) {
+            log.error("框架解析响应失败 -> {}", contentType, e);
+            request.requestResult.setSucceed(false);
+            request.requestResult.setThrowable(e);
+        } finally {
+            // TODO 相关清理操作
+        }
+    }
+
+    private void handleThrowable(BuiltinRequest request, Throwable throwable) {
+        request.requestResult.setSucceed(false);
+        request.requestResult.setThrowable(throwable.getCause());
     }
 
     @Override

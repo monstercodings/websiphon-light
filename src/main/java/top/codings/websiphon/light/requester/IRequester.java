@@ -22,6 +22,10 @@ public interface IRequester<T extends IRequest> {
      */
     CompletableFuture<T> executeAsync(T request);
 
+    T create(String url);
+
+    T create(String url, Object userData);
+
     /**
      * 关闭请求器
      *
@@ -56,7 +60,6 @@ public interface IRequester<T extends IRequest> {
                 try {
                     String className = config.getRequesterClass();
                     if (StringUtils.isBlank(className)) {
-//                        className = ApacheAsyncRequester.class.getName();
                         throw new IllegalArgumentException("请设定请求器全限定类名");
                     }
                     requester = (IRequester) Class.forName(

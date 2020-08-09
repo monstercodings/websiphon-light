@@ -40,6 +40,16 @@ public class BaseCrawler extends CombineCrawler {
     }
 
     @Override
+    public void push(String url) {
+        push(url, null);
+    }
+
+    @Override
+    public void push(String url, Object userData) {
+        push(getRequester().create(url, userData));
+    }
+
+    @Override
     public boolean isBusy() {
         return getRequester().isBusy() | responseHandler.isBusy();
     }

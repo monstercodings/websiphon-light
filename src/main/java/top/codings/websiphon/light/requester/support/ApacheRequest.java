@@ -5,15 +5,12 @@ import lombok.Setter;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.client.utils.HttpClientUtils;
-import top.codings.websiphon.light.requester.IRequest;
 
 @Setter
 @Getter
-public class ApacheRequest implements IRequest<HttpRequestBase, HttpResponse> {
-    HttpRequestBase httpRequest;
-    HttpResponse httpResponse;
-    RequestResult requestResult;
-    Object userData;
+public class ApacheRequest extends BaseRequest<HttpRequestBase, HttpResponse> {
+    protected HttpRequestBase httpRequest;
+    protected HttpResponse httpResponse;
 
     public ApacheRequest(HttpRequestBase httpRequest) {
         this.httpRequest = httpRequest;
