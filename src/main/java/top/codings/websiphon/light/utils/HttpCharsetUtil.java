@@ -30,9 +30,9 @@ public class HttpCharsetUtil {
                     );
                 }
             }
-            return Charset.defaultCharset();
+            return null;
         } catch (Exception e) {
-            return Charset.defaultCharset();
+            return null;
         }
     }
 }

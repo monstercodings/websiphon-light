@@ -147,6 +147,9 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
             byte[] body = httpResponse.body();
             if (null == charset) {
                 charset = HttpCharsetUtil.findCharset(body);
+                if (null == charset) {
+                    charset = Charset.defaultCharset();
+                }
             }
             if (mimeType.contains("text")) {
                 // 文本解析
@@ -158,7 +161,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                 request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
             } else {
                 // 字节解析
-                request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
+                request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
                 request.requestResult.setData(body);
             }
         } catch (Exception e) {

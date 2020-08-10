@@ -43,7 +43,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public class ApacheAsyncRequester extends CombineRequester<ApacheRequest> implements AsyncRequester<ApacheRequest> {
+public class ApacheRequester extends CombineRequester<ApacheRequest> implements AsyncRequester<ApacheRequest> {
     private String contentTypePattern = "([a-z]+/[^;\\.]+);?\\s?(charset=)?(.*)";
     private Pattern pattern = Pattern.compile(contentTypePattern, Pattern.CASE_INSENSITIVE);
 
@@ -55,11 +55,11 @@ public class ApacheAsyncRequester extends CombineRequester<ApacheRequest> implem
     private RequestConfig config;
     private Registry<InputStreamFactory> decoderRegistry;
 
-    public ApacheAsyncRequester() {
+    public ApacheRequester() {
         this(false);
     }
 
-    public ApacheAsyncRequester(boolean redirect) {
+    public ApacheRequester(boolean redirect) {
         super(null);
         this.redirect = redirect;
     }
@@ -238,6 +238,9 @@ public class ApacheAsyncRequester extends CombineRequester<ApacheRequest> implem
                 }
                 if (null == charset) {
                     charset = HttpCharsetUtil.findCharset(body);
+                    if (null == charset) {
+                        charset = Charset.defaultCharset();
+                    }
                 }
                 if (mimeType.contains("text")) {
                     // 文本解析
@@ -249,7 +252,7 @@ public class ApacheAsyncRequester extends CombineRequester<ApacheRequest> implem
                     request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
                 } else {
                     // 字节解析
-                    request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
+                    request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
                     request.requestResult.setData(body);
                 }
                 responseHandler.push(request);

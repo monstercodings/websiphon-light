@@ -45,28 +45,27 @@ public class FakeRequester extends CombineRequester<IRequest> implements AsyncRe
     @Override
     public CompletableFuture<IRequest> executeAsync(IRequest request) {
         if (request instanceof BuiltinRequest) {
-            try {
-                HttpRequest httpRequest = (HttpRequest) request.getHttpRequest();
-                Map<String, List<String>> headers = httpRequest.headers().map();
-                if (headers == null || headers.isEmpty()) {
-                    HttpRequest.Builder builder = HttpRequest
-                            .newBuilder()
-                            .uri(httpRequest.uri())
-                            .method(httpRequest.method(), httpRequest.bodyPublisher().orElse(HttpRequest.BodyPublishers.noBody()))
-                            .version(httpRequest.version().orElse(HttpClient.Version.HTTP_2))
-                            .timeout(httpRequest.timeout().orElse(Duration.ofSeconds(30)))
-                            .expectContinue(httpRequest.expectContinue());
-                    builtHeaders.forEach((k, v) -> builder.header(k, v));
-                    request.setHttpRequest(builder.build());
-                }
-                return requester.executeAsync(request);
+            HttpRequest httpRequest = (HttpRequest) request.getHttpRequest();
+            Map<String, List<String>> headers = httpRequest.headers().map();
+            if (headers == null || headers.isEmpty()) {
+                HttpRequest.Builder builder = HttpRequest
+                        .newBuilder()
+                        .uri(httpRequest.uri())
+                        .method(httpRequest.method(), httpRequest.bodyPublisher().orElse(HttpRequest.BodyPublishers.noBody()))
+                        .version(httpRequest.version().orElse(HttpClient.Version.HTTP_2))
+                        .timeout(httpRequest.timeout().orElse(Duration.ofSeconds(30)))
+                        .expectContinue(httpRequest.expectContinue());
+                builtHeaders.forEach((k, v) -> builder.header(k, v));
+                request.setHttpRequest(builder.build());
+            }
+            /*try {
             } catch (Exception e) {
                 log.error("伪装请求头失败", e);
                 IRequest.RequestResult requestResult = new IRequest.RequestResult();
                 requestResult.setSucceed(false);
                 requestResult.setThrowable(e);
                 request.setRequestResult(requestResult);
-            }
+            }*/
         } else if (request instanceof ApacheRequest) {
             HttpRequestBase httpRequestBase = ((ApacheRequest) request).getHttpRequest();
             if (httpRequestBase.getAllHeaders().length == 0) {
@@ -81,10 +80,25 @@ public class FakeRequester extends CombineRequester<IRequest> implements AsyncRe
                         new BasicHeader("User-agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
                 });
             }
-            return requester.executeAsync(request);
+        } else if (request instanceof NettyRequest) {
+            io.netty.handler.codec.http.HttpRequest httpRequest = ((NettyRequest) request).getHttpRequest();
+            /*for (Map.Entry<String, String> entry : builtHeaders.entrySet()) {
+                httpRequest.headers().set(entry.getKey(), entry.getValue());
+            }*/
+            httpRequest.headers()
+                    .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3")
+                    .set("Accept-Encoding", "gzip, deflate, compress")
+                    .set("Accept-Language", "zh-CN,zh;q=0.9")
+                    .set("Cache-Control", "no-cache")
+                    .set("Connection", "keep-alive")
+                    .set("DNT", "1")
+                    .set("Upgrade-Insecure-Requests", "1")
+                    .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
+            ;
+        } else {
+            return CompletableFuture.completedFuture(request);
         }
-
-        return CompletableFuture.completedFuture(request);
+        return requester.executeAsync(request);
     }
 
     @Override

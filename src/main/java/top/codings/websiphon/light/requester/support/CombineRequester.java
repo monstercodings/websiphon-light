@@ -75,7 +75,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.isBusy();
         }
-        throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+        return false;
     }
 
     @Override

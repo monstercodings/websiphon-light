@@ -59,6 +59,8 @@ public class DistinctRequester extends CombineRequester<IRequest> implements Asy
             url = ((HttpRequest) request.getHttpRequest()).uri().toString();
         } else if (request instanceof ApacheRequest) {
             url = ((ApacheRequest) request).getHttpRequest().getURI().toString();
+        } else if (request instanceof NettyRequest) {
+            url = ((NettyRequest) request).httpResponse.getUri().toString();
         }
         if (StringUtils.isNotBlank(url) && filter.put(url)) {
             return requester.executeAsync(request);

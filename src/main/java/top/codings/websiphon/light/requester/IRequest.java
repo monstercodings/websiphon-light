@@ -62,7 +62,9 @@ public interface IRequest<Q, R> {
     enum ResponseType {
         TEXT(),
         JSON(),
-        UNKNOW(),
+        BYTE(),
+        NO_CHARSET(),
+        ERROR_CODE(),
     }
 
     @AllArgsConstructor

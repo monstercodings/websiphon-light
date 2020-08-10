@@ -45,4 +45,12 @@ public abstract class BaseRequest<Q, R> implements IRequest<Q, R> {
         this.status = status;
         return true;
     }
+
+    @Override
+    public void release() {
+        userData = null;
+        requestResult.setThrowable(null);
+        requestResult.setData(null);
+        requestResult = null;
+    }
 }

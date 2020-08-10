@@ -16,11 +16,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class TotalTest {
+public class TestTotal {
     private static AtomicBoolean keep = new AtomicBoolean(true);
 
     public static void main(String[] args) throws Exception {
-        TotalTest test = new TotalTest();
+        TestTotal test = new TestTotal();
         ICrawler crawler = test.startup();
 
 //        test.createHttpServer();
@@ -34,9 +34,8 @@ public class TotalTest {
                         .build()));*/
 //                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
 //                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
-                crawler.push("https://www.baidu.com");
+                crawler.push("http://localhost:8080/header");
             }
-            Thread.sleep(500);
             break;
         }
 //        System.out.println("停止请求");
@@ -73,7 +72,7 @@ public class TotalTest {
     }
 
     public ICrawler startup() throws Exception {
-        QpsDataStat stat = new QpsDataStat(0);
+        QpsDataStat stat = new QpsDataStat(5000);
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
                         .name("我的测试爬虫")
@@ -81,8 +80,9 @@ public class TotalTest {
                         .maxNetworkConcurrency(100)
                         .maxConcurrentProcessing(Runtime.getRuntime().availableProcessors())
                         .responseHandlerImplClass("top.codings.websiphon.light.test.dependent.TestResponseHandler")
-                        .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
-//                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheAsyncRequester")
+//                        .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
+//                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheRequester")
+                        .requesterClass("top.codings.websiphon.light.requester.support.NettyRequester")
                         .build())
                 .wrapBy(new StatCrawler<>(stat, true))
                 .wrapBy(new FakeCrawler())

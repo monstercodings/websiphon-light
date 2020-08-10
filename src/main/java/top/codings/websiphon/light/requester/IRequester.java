@@ -4,7 +4,6 @@ import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.manager.IResponseHandler;
 import top.codings.websiphon.light.manager.QueueResponseHandler;
-import top.codings.websiphon.light.requester.support.ApacheAsyncRequester;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -56,7 +55,7 @@ public interface IRequester<T extends IRequest> {
                 throw new RuntimeException("同步模式暂未支持");
             } else {
 //                requester = new BuiltinRequester();
-//                requester = new ApacheAsyncRequester();
+//                requester = new ApacheRequester();
                 try {
                     String className = config.getRequesterClass();
                     if (StringUtils.isBlank(className)) {
