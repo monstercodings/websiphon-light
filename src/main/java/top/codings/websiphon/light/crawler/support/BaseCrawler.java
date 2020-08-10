@@ -17,8 +17,31 @@ public class BaseCrawler extends CombineCrawler {
     }
 
     public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler) {
+        this(config, responseHandler, null);
+    }
+
+    public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler, IRequester requester) {
         this.config = config;
+        if (null == responseHandler) {
+            try {
+                // 初始化响应处理器
+                responseHandler = (IResponseHandler) Class.forName(
+                        config.getResponseHandlerImplClass(),
+                        true,
+                        config.getClassLoader() == null ? ClassLoader.getSystemClassLoader() : config.getClassLoader()
+                ).getConstructor().newInstance();
+            } catch (Exception e) {
+                throw new RuntimeException("初始化响应处理器失败", e);
+            }
+        }
+        responseHandler.setConfig(config);
         this.responseHandler = responseHandler;
+        if (null == requester) {
+            setRequester((CombineRequester) IRequester
+                    .newBuilder(config)
+                    .responseHandler(responseHandler)
+                    .build());
+        }
     }
 
     @Override
@@ -43,25 +66,6 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public void startup() {
-        if (null == responseHandler) {
-            try {
-                // 初始化响应处理器
-                responseHandler = (IResponseHandler) Class.forName(
-                        config.getResponseHandlerImplClass(),
-                        true,
-                        config.getClassLoader() == null ? ClassLoader.getSystemClassLoader() : config.getClassLoader()
-                ).getConstructor().newInstance();
-            } catch (Exception e) {
-                throw new RuntimeException("初始化响应处理器失败", e);
-            }
-        }
-        responseHandler.setConfig(config);
-        if (null == getRequester()) {
-            setRequester((CombineRequester) IRequester
-                    .newBuilder(config)
-                    .responseHandler(responseHandler)
-                    .build());
-        }
         // 启动响应处理器
         responseHandler.startup(this);
         // 初始化请求器，并使用装饰器模式增强内建请求器
