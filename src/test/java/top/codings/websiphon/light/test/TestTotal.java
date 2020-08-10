@@ -34,7 +34,8 @@ public class TestTotal {
                         .build()));*/
 //                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
 //                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
-                crawler.push("http://localhost:8080/header");
+                crawler.push("https://www.baidu.com?a=1");
+                crawler.push("https://www.baidu.com?a=2");
             }
             break;
         }
