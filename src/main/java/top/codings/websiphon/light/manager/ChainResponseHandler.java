@@ -7,10 +7,8 @@ import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedTransferQueue;
-import java.util.concurrent.Semaphore;
+import java.util.AbstractQueue;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -21,7 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public abstract class ChainResponseHandler implements QueueResponseHandler {
     protected CrawlerConfig config;
     private ExecutorService exe;
-    private LinkedTransferQueue<IRequest> queue;
+    private LinkedBlockingQueue<IRequest> queue;
     private Semaphore token;
     private Lock lock = new ReentrantLock();
 //    private ICrawler crawler;
@@ -32,7 +30,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
 
     @Override
     public void startup(ICrawler crawler) {
-        queue = new LinkedTransferQueue<>();
+        queue = new LinkedBlockingQueue<>();
         exe = Executors.newCachedThreadPool();
         token = new Semaphore(config.getMaxConcurrentProcessing());
         exe.submit(() -> {
