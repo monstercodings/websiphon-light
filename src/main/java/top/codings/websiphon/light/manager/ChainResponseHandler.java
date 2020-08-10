@@ -19,7 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public abstract class ChainResponseHandler implements QueueResponseHandler {
     protected CrawlerConfig config;
     private ExecutorService exe;
-    private LinkedBlockingQueue<IRequest> queue;
+    private LinkedTransferQueue<IRequest> queue;
     private Semaphore token;
     private Lock lock = new ReentrantLock();
 //    private ICrawler crawler;
@@ -30,7 +30,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
 
     @Override
     public void startup(ICrawler crawler) {
-        queue = new LinkedBlockingQueue<>();
+        queue = new LinkedTransferQueue<>();
         exe = Executors.newCachedThreadPool();
         token = new Semaphore(config.getMaxConcurrentProcessing());
         exe.submit(() -> {
