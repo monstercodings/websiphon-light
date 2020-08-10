@@ -16,6 +16,7 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -33,6 +34,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class NettyRequester extends CombineRequester<NettyRequest> implements AsyncRequester<NettyRequest> {
     private NioEventLoopGroup workerGroup;
     private SSLContext sslContext;
@@ -124,7 +126,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                                 FullHttpResponse response = (FullHttpResponse) httpResponse;
                                                 body = ByteBufUtil.getBytes(response.content());
                                             } else {
-                                                System.out.println("响应类型尚未有处理方案 -> " + httpResponse.getClass().getName());
+                                                log.warn("响应类型尚未有处理方案 -> %s", httpResponse.getClass().getName());
                                                 request.requestResult.setSucceed(false);
                                                 request.requestResult.setThrowable(new RuntimeException("响应类型不匹配"));
                                                 return;
@@ -148,12 +150,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                             }
                                             if (mimeType.contains("text")) {
                                                 // 文本解析
-                                                System.out.println(new String(body, charset));
                                                 request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
                                                 request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
                                             } else if (mimeType.contains("json")) {
                                                 // JSON解析
-                                                System.out.println(JSON.toJSONString(new String(body, charset)));
                                                 request.requestResult.setResponseType(IRequest.ResponseType.JSON);
                                                 request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
                                             } else {
