@@ -6,10 +6,7 @@ import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedTransferQueue;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -32,13 +29,16 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
     @Override
     public void startup(ICrawler crawler) {
         queue = new LinkedTransferQueue<>();
-        exe = Executors.newCachedThreadPool();
-        token = new Semaphore(config.getMaxConcurrentProcessing());
+        exe = Executors.newFixedThreadPool(config.getMaxConcurrentProcessing());
+        token = new Semaphore(config.getMaxConcurrentProcessing() - 1);
         exe.submit(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     // 先阻塞获取任务
-                    IRequest request = queue.take();
+                    IRequest request = queue.poll(1, TimeUnit.MINUTES);
+                    if (null == request) {
+                        continue;
+                    }
                     // 获取令牌
                     token.acquire();
                     // 将标记位恢复

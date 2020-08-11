@@ -50,7 +50,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                 try {
                     IRequest request;
                     // 先阻塞获取任务
-                    request = queue.take();
+                    request = queue.poll(30, TimeUnit.SECONDS);
+                    if (null == request) {
+                        continue;
+                    }
                     if (null != token) {
                         // 获取令牌
                         token.acquire();
