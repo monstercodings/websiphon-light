@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSON;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.bean.DataStat;
-import top.codings.websiphon.light.manager.QueueResponseHandler;
+import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 

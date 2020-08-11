@@ -1,12 +1,11 @@
-package top.codings.websiphon.light.processor.support;
+package top.codings.websiphon.light.function.processor;
 
 import com.alibaba.fastjson.JSON;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.processor.AbstractProcessor;
+import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 @Slf4j
 @NoArgsConstructor

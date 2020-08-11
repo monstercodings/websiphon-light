@@ -1,4 +1,4 @@
-package top.codings.websiphon.light.processor;
+package top.codings.websiphon.light.function.processor;
 
 import io.netty.util.internal.TypeParameterMatcher;
 import lombok.extern.slf4j.Slf4j;

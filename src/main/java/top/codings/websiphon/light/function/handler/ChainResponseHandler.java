@@ -1,13 +1,11 @@
-package top.codings.websiphon.light.manager;
+package top.codings.websiphon.light.function.handler;
 
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
-import java.util.AbstractQueue;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;

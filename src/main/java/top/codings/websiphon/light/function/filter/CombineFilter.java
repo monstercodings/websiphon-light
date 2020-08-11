@@ -1,4 +1,4 @@
-package top.codings.websiphon.light.function;
+package top.codings.websiphon.light.function.filter;
 
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;

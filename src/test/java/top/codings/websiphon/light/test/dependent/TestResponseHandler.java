@@ -3,10 +3,10 @@ package top.codings.websiphon.light.test.dependent;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.FilterableCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.manager.StatResponseHandler;
-import top.codings.websiphon.light.processor.AbstractProcessor;
-import top.codings.websiphon.light.processor.IProcessor;
-import top.codings.websiphon.light.processor.support.JSONProcessor;
+import top.codings.websiphon.light.function.handler.StatResponseHandler;
+import top.codings.websiphon.light.function.processor.AbstractProcessor;
+import top.codings.websiphon.light.function.processor.IProcessor;
+import top.codings.websiphon.light.function.processor.JSONProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.locks.ReentrantLock;

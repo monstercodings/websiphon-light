@@ -1,4 +1,4 @@
-package top.codings.websiphon.light.manager;
+package top.codings.websiphon.light.function.registry;
 
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.config.RegistryConfig;

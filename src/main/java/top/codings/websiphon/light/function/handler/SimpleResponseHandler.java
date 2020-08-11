@@ -1,10 +1,9 @@
-package top.codings.websiphon.light.manager;
+package top.codings.websiphon.light.function.handler;
 
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.processor.IProcessor;
+import top.codings.websiphon.light.function.processor.IProcessor;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

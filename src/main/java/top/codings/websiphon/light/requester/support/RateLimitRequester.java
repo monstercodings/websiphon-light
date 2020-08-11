@@ -3,13 +3,14 @@ package top.codings.websiphon.light.requester.support;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
-import top.codings.websiphon.light.manager.IResponseHandler;
-import top.codings.websiphon.light.manager.QueueResponseHandler;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.SyncRequester;
 
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 @Slf4j
 public class RateLimitRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
@@ -18,6 +19,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     private LinkedTransferQueue<IRequest> queue;
     private DelayQueue<Inner> timeoutQueue;
     private ExecutorService exe;
+    private Consumer<IRequest> timeoutHandler;
     @Setter
     private CombineCrawler crawler;
     /**
@@ -26,11 +28,16 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     private volatile boolean normal;
 
     public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency) {
+        this(requester, maxNetworkConcurrency, null);
+    }
+
+    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, Consumer<IRequest> timeoutHandler) {
         super(requester);
         this.maxNetworkConcurrency = maxNetworkConcurrency;
         if (maxNetworkConcurrency > 0) {
             token = new Semaphore(maxNetworkConcurrency);
         }
+        this.timeoutHandler = timeoutHandler;
     }
 
     @Override
@@ -93,7 +100,14 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                         IRequest.Status status = inner.request.getStatus();
                         switch (status) {
                             case WAIT, READY, REQUEST -> {
-                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
+                                if (null != timeoutHandler) {
+                                    try {
+                                        timeoutHandler.accept(inner.request);
+                                    } catch (Exception e) {
+                                        log.error("请求对象超时处理失败", e);
+                                    }
+                                }
+//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
                                 inner.request.setStatus(IRequest.Status.TIMEOUT);
 //                                inner.request.release();
                             }

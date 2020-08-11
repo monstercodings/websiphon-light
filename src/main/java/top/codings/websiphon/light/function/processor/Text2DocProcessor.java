@@ -1,4 +1,4 @@
-package top.codings.websiphon.light.processor.support;
+package top.codings.websiphon.light.function.processor;
 
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -6,7 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.processor.AbstractProcessor;
+import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.ApacheRequest;
 import top.codings.websiphon.light.requester.support.BuiltinRequest;

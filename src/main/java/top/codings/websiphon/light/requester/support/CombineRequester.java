@@ -1,6 +1,6 @@
 package top.codings.websiphon.light.requester.support;
 
-import top.codings.websiphon.light.manager.IResponseHandler;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 

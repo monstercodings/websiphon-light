@@ -3,7 +3,7 @@ package top.codings.websiphon.light.crawler.support;
 import top.codings.websiphon.light.config.RegistryConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.RegistrableCrawler;
-import top.codings.websiphon.light.manager.IRegistry;
+import top.codings.websiphon.light.function.registry.IRegistry;
 
 import java.util.Optional;
 

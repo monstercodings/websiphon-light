@@ -2,8 +2,8 @@ package top.codings.websiphon.light.requester;
 
 import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.config.CrawlerConfig;
-import top.codings.websiphon.light.manager.IResponseHandler;
-import top.codings.websiphon.light.manager.QueueResponseHandler;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 
 import java.util.concurrent.CompletableFuture;
 

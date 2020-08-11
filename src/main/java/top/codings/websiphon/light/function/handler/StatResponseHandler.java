@@ -1,10 +1,9 @@
-package top.codings.websiphon.light.manager;
+package top.codings.websiphon.light.function.handler;
 
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.StatisticalCrawler;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
 
 /**
  * 具备统计功能的处理器
