@@ -64,8 +64,8 @@ public class StatRequester extends CombineRequester<IRequest> implements AsyncRe
 
     @Override
     public CompletableFuture<IRequest> executeAsync(IRequest request) {
-        dataStat.getRequestCountTotal().increment();
         return requester.executeAsync(request).whenCompleteAsync((req, throwable) -> {
+            dataStat.getRequestCountTotal().increment();
             if (req.getRequestResult().isSucceed()) {
                 dataStat.getNetworkRequestSuccessCountTotal().increment();
             }
