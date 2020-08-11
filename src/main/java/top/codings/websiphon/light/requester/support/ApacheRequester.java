@@ -21,6 +21,7 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.impl.NoConnectionReuseStrategy;
+import org.apache.http.impl.client.DefaultClientConnectionReuseStrategy;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
@@ -85,7 +86,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
                             SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build(),
                             (hostname, session) -> true)
                     )
-                    .setConnectionReuseStrategy(NoConnectionReuseStrategy.INSTANCE)
+                    .setConnectionReuseStrategy(DefaultClientConnectionReuseStrategy.INSTANCE)
 //                    .addInterceptorLast(new RequestAcceptEncoding())
                     /*.addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
 
@@ -123,9 +124,9 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
 //        context.setAttribute("webRequest", request);
         RequestConfig.Builder builder = RequestConfig
                 .copy(config)
-                .setSocketTimeout(30000)
-                .setConnectTimeout(30000)
-                .setConnectionRequestTimeout(30000);
+                .setSocketTimeout(6000)
+                .setConnectTimeout(6000)
+                .setConnectionRequestTimeout(6000);
         // TODO 此处支持代理
         /*WebProxy proxy = httpRequest.getProxy();
         if (proxy != null && proxy != WebProxy.NO_PROXY) {
@@ -172,10 +173,12 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
 
 
         private void verifyStatus(Task task) {
-            IRequest.RequestResult requestResult = new IRequest.RequestResult();
-            request.setRequestResult(requestResult);
             request.lock();
             try {
+                if (null != request.requestResult) {
+                    return;
+                }
+                request.setRequestResult(new IRequest.RequestResult());
                 if (request.getStatus() == IRequest.Status.TIMEOUT) {
                     request.requestResult.setSucceed(false);
                     request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));

@@ -35,7 +35,6 @@ public class TestTotal {
 //                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
 //                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
                 crawler.push("https://www.baidu.com?a=1");
-                crawler.push("https://www.baidu.com?a=2");
             }
             break;
         }
@@ -79,7 +78,6 @@ public class TestTotal {
                         .name("我的测试爬虫")
                         .version("0.0.1")
                         .maxNetworkConcurrency(100)
-                        .maxConcurrentProcessing(Runtime.getRuntime().availableProcessors())
                         .responseHandlerImplClass("top.codings.websiphon.light.test.dependent.TestResponseHandler")
 //                        .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
 //                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheRequester")

@@ -2,6 +2,7 @@ package top.codings.websiphon.light.config;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Builder
@@ -21,6 +22,7 @@ public class CrawlerConfig {
     /**
      * 最大处理响应线程数
      */
+    @Setter
     private int maxConcurrentProcessing;
     /**
      * 最大网络并发数

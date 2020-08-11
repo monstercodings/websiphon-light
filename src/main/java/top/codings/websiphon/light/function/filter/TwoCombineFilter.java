@@ -5,18 +5,18 @@ import com.google.common.hash.Funnels;
 
 import java.nio.charset.Charset;
 
-public class CombineFilter implements CleanableFilter<String, Boolean> {
+public class TwoCombineFilter implements CleanableFilter<String, Boolean> {
     private int maxCount = 200000000;
     private double fpp = 0.001d;
     private BloomFilter<String> localFilter;
     private IFilter<String, Boolean> outerFilter;
 
-    public CombineFilter(IFilter<String, Boolean> outerFilter) {
+    public TwoCombineFilter(IFilter<String, Boolean> outerFilter) {
         this.outerFilter = outerFilter;
         localFilter = BloomFilter.create(Funnels.stringFunnel(Charset.forName("utf-8")), maxCount, fpp);
     }
 
-    public CombineFilter(int maxCount, double fpp, IFilter<String, Boolean> outerFilter) {
+    public TwoCombineFilter(int maxCount, double fpp, IFilter<String, Boolean> outerFilter) {
         this.maxCount = maxCount;
         this.fpp = fpp;
         this.outerFilter = outerFilter;

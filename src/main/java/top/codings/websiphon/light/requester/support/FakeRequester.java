@@ -53,7 +53,7 @@ public class FakeRequester extends CombineRequester<IRequest> implements AsyncRe
                         .uri(httpRequest.uri())
                         .method(httpRequest.method(), httpRequest.bodyPublisher().orElse(HttpRequest.BodyPublishers.noBody()))
                         .version(httpRequest.version().orElse(HttpClient.Version.HTTP_2))
-                        .timeout(httpRequest.timeout().orElse(Duration.ofSeconds(30)))
+                        .timeout(httpRequest.timeout().orElse(Duration.ofSeconds(6)))
                         .expectContinue(httpRequest.expectContinue());
                 builtHeaders.forEach((k, v) -> builder.header(k, v));
                 request.setHttpRequest(builder.build());

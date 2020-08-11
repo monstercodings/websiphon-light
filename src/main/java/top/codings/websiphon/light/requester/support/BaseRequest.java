@@ -12,7 +12,7 @@ public abstract class BaseRequest<Q, R> implements IRequest<Q, R> {
     @Setter
     protected Object userData;
     @Setter
-    protected RequestResult requestResult;
+    protected volatile RequestResult requestResult;
     private ReentrantLock lock = new ReentrantLock();
 
     @Override

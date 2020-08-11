@@ -51,7 +51,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
 //            executorService = Executors.newSingleThreadExecutor();
             client = HttpClient.newBuilder()
 //                    .executor(executorService)
-                    .connectTimeout(Duration.ofSeconds(30))
+                    .connectTimeout(Duration.ofSeconds(6))
 //                    .version(HttpClient.Version.HTTP_1_1)
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .sslContext(sslContext)
@@ -70,9 +70,12 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
                     .whenCompleteAsync((httpResponse, throwable) -> {
-                        request.requestResult = new IRequest.RequestResult();
                         request.lock();
                         try {
+                            if (request.requestResult != null) {
+                                return;
+                            }
+                            request.requestResult = new IRequest.RequestResult();
                             if (request.getStatus() == IRequest.Status.TIMEOUT) {
                                 request.requestResult.setSucceed(false);
                                 request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
@@ -114,6 +117,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
         return new BuiltinRequest(
                 HttpRequest.newBuilder()
                         .uri(URI.create(url))
+                        .timeout(Duration.ofSeconds(6))
                         .build(),
                 userData
         );

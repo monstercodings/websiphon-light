@@ -163,7 +163,9 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
 
     @Override
     public boolean isBusy() {
-//        log.debug("正常状态:{} | 剩余令牌:{} | 队列为空:{}", normal, token.availablePermits(), queue.isEmpty());
+        if (log.isTraceEnabled()) {
+            log.trace("正常状态:{} | 剩余令牌:{} | 队列为空:{}", normal, token.availablePermits(), queue.isEmpty());
+        }
         boolean tokenStatu = token == null ? true : token.availablePermits() == maxNetworkConcurrency;
         return !(normal &&
                 tokenStatu &&
@@ -177,7 +179,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     }
 
     private static class Inner implements Delayed {
-        int timeout = 120000;
+        int timeout = 30000;
         IRequest request;
         long trigger;
 

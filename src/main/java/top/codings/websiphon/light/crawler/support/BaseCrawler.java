@@ -21,6 +21,9 @@ public class BaseCrawler extends CombineCrawler {
     }
 
     public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler, IRequester requester) {
+        if (config.getMaxConcurrentProcessing() <= 0) {
+            config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors() + 1);
+        }
         this.config = config;
         if (null == responseHandler) {
             try {

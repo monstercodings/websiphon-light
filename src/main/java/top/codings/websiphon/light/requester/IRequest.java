@@ -76,6 +76,7 @@ public interface IRequest<Q, R> {
         PROCESS("业务处理中"),
         FINISH("处理完成"),
         TIMEOUT("已超时"),
+        ERROR("响应异常"),
         ;
         public String text;
     }

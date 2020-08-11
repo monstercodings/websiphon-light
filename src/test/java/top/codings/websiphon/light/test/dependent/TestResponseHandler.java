@@ -26,7 +26,7 @@ public class TestResponseHandler extends StatResponseHandler {
                     @Override
                     protected Object process0(Document data, BuiltinRequest request, ICrawler crawler) throws Exception {
                         ((CombineCrawler) crawler).find(FilterableCrawler.class).ifPresent(filterableCrawler -> {
-                            if (((CombineFilter) filterableCrawler.filter()).target().put(request.getHttpRequest().uri().toString())) {
+                            if (((TwoCombineFilter) filterableCrawler.filter()).target().put(request.getHttpRequest().uri().toString())) {
                                 System.out.println(String.format("新解析 -> %s", data.title()));
                             } else {
                                 System.out.println(String.format("该解析已存在 -> %s", data.title()));

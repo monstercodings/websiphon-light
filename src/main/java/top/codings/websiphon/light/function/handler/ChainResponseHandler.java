@@ -6,7 +6,10 @@ import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -41,6 +44,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
                     // 将标记位恢复
                     normal = true;
                     exe.submit(() -> {
+                        long start = System.currentTimeMillis();
                         try {
                             request.setStatus(IRequest.Status.PROCESS);
                             beforeHandle(request, crawler);
@@ -49,10 +53,13 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
                         } catch (Exception e) {
                             log.error("响应处理发生异常", e);
                         } finally {
+                            String useTime = String.format("%.3f", (System.currentTimeMillis() - start) / 1000f);
                             request.setStatus(IRequest.Status.FINISH);
                             token.release();
                             request.release();
-//                            log.debug("当前处理令牌剩余 [{}]", token.availablePermits());
+                            if (log.isTraceEnabled()) {
+                                log.trace("当次处理耗时 [{}s] | 令牌余量 [{}]", useTime, token.availablePermits());
+                            }
                             // 检查爬虫是否已空闲
                             if (crawler != null && !crawler.isBusy() && lock.tryLock()) {
                                 try {

@@ -70,15 +70,20 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE, false)
                 .option(ChannelOption.TCP_NODELAY, true)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 30000)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 6000)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
                         socketChannel.closeFuture().addListener((ChannelFutureListener) channelFuture -> {
-                            cf.completeAsync(() -> request);
+                            request.lock();
+                            try {
+                                cf.completeAsync(() -> request);
+                            } finally {
+                                request.unlock();
+                            }
                         });
                         socketChannel.pipeline()
-                                .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, 3, TimeUnit.SECONDS) {
+                                .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, 6, TimeUnit.SECONDS) {
                                     @Override
                                     protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
                                         request.lock();
@@ -106,6 +111,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                             if (null != request.requestResult) {
                                                 return;
                                             }
+                                            request.setStatus(IRequest.Status.RESPONSE);
                                             request.requestResult = new IRequest.RequestResult();
                                             if (!httpResponse.decoderResult().isSuccess()) {
                                                 request.requestResult.setSucceed(false);
@@ -178,6 +184,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                             if (null != request.requestResult) {
                                                 return;
                                             }
+                                            request.setStatus(IRequest.Status.ERROR);
                                             request.requestResult = new IRequest.RequestResult();
                                             request.requestResult.setThrowable(cause);
                                             request.requestResult.setSucceed(false);
@@ -236,6 +243,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                 ;
                 channelFuture.channel().writeAndFlush(httpRequest).addListener((ChannelFutureListener) channelFuture1 -> {
                     if (!channelFuture1.isSuccess()) {
+                        request.setStatus(IRequest.Status.ERROR);
                         request.requestResult = new IRequest.RequestResult();
                         request.requestResult.setSucceed(false);
                         request.requestResult.setThrowable(channelFuture1.cause());
@@ -243,6 +251,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                     }
                 });
             } else {
+                request.setStatus(IRequest.Status.ERROR);
                 request.requestResult = new IRequest.RequestResult();
                 request.requestResult.setSucceed(false);
                 request.requestResult.setThrowable(channelFuture.cause());

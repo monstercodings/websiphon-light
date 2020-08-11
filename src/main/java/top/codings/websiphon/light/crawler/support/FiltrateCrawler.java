@@ -4,7 +4,7 @@ import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.FilterableCrawler;
 import top.codings.websiphon.light.function.filter.ArticleFilter;
 import top.codings.websiphon.light.function.filter.CleanableFilter;
-import top.codings.websiphon.light.function.filter.CombineFilter;
+import top.codings.websiphon.light.function.filter.TwoCombineFilter;
 import top.codings.websiphon.light.function.filter.IFilter;
 import top.codings.websiphon.light.requester.support.DistinctRequester;
 
@@ -21,7 +21,7 @@ public class FiltrateCrawler extends CombineCrawler implements FilterableCrawler
             cleanableFilter = (CleanableFilter) iFilter;
         } else if (null == iFilter) {
             // 使用组合过滤器
-            cleanableFilter = new CombineFilter(new ArticleFilter());
+            cleanableFilter = new TwoCombineFilter(new ArticleFilter());
         } else {
             throw new RuntimeException("去重功能爬虫暂不支持除基础和可清除之外的过滤器");
         }
