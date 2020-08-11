@@ -258,7 +258,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
                     request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
                     request.requestResult.setData(body);
                 }
-                responseHandler.push(request);
+                responseHandler.handle(request);
             });
 
             /*request.setStatus(IRequest.Status.RESPONSE);
@@ -336,7 +336,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
             verifyStatus(o -> {
                 request.requestResult.setSucceed(false);
                 request.requestResult.setThrowable(ex);
-                responseHandler.push(request);
+                responseHandler.handle(request);
             });
         }
 
@@ -345,7 +345,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
             verifyStatus(o -> {
                 request.requestResult.setSucceed(false);
                 request.requestResult.setThrowable(new RuntimeException("请求被取消"));
-                responseHandler.push(request);
+                responseHandler.handle(request);
             });
         }
     }

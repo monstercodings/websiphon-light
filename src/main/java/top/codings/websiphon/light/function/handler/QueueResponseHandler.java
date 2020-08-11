@@ -7,7 +7,13 @@ import top.codings.websiphon.light.requester.IRequest;
  * 异步队列处理器
  */
 public interface QueueResponseHandler extends IResponseHandler{
-    boolean push(IRequest request);
+    void startup(ICrawler crawler);
+
+    void shutdown(boolean force);
+
+    boolean isBusy();
+
+//    boolean push(IRequest request);
 
     void whenFinish(ICrawler crawler);
 

@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.CombineRequester;
@@ -64,13 +65,16 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public boolean isBusy() {
-        return getRequester().isBusy() | responseHandler.isBusy();
+        boolean isBusy = (responseHandler instanceof QueueResponseHandler) ? ((QueueResponseHandler) responseHandler).isBusy() : false;
+        return getRequester().isBusy() | isBusy;
     }
 
     @Override
     public void startup() {
-        // 启动响应处理器
-        responseHandler.startup(this);
+        if (responseHandler instanceof QueueResponseHandler) {
+            // 启动响应处理器
+            ((QueueResponseHandler) responseHandler).startup(this);
+        }
         // 初始化请求器，并使用装饰器模式增强内建请求器
         /*requester = new DistinctRequester(
                 new RateLimitRequester(

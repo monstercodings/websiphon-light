@@ -46,8 +46,14 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
         timeoutQueue = new DelayQueue<>();
         exe = Executors.newFixedThreadPool(2);
         exe.submit(() -> {
+            try {
+                System.out.println(_checkMemory() + "");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             while (!Thread.currentThread().isInterrupted()) {
                 try {
+                    checkMemory();
                     IRequest request;
                     // 先阻塞获取任务
                     request = queue.poll(30, TimeUnit.SECONDS);
@@ -179,6 +185,42 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     @Override
     public void setResponseHandler(QueueResponseHandler responseHandler) {
         ((AsyncRequester) requester).setResponseHandler(responseHandler);
+    }
+
+    private void checkMemory() throws InterruptedException {
+        boolean first = true;
+        int loop = 0;
+        float usePercent;
+        while ((usePercent = _checkMemory()) > 0.7f) {
+            loop++;
+            if (first) {
+                first = false;
+                log.warn("内存使用百分比超出设定阈值，当前使用{}%", String.format("%.2f", usePercent * 100f));
+            }
+            TimeUnit.SECONDS.sleep(10);
+            if (log.isTraceEnabled()) {
+                log.trace("休眠结束，再次检查内存占用情况 | {}%", String.format("%.2f", usePercent * 100f));
+            }
+            if (loop > 6) {
+                loop = 0;
+                first = true;
+            }
+        }
+    }
+
+    private float _checkMemory() throws InterruptedException {
+        Runtime runtime = Runtime.getRuntime();
+        //jvm总内存
+        long jvmTotalMemoryByte = runtime.totalMemory();
+        //jvm最大可申请
+        long jvmMaxMoryByte = runtime.maxMemory();
+        // 空闲空间
+        long freeMemoryByte = runtime.freeMemory();
+        // 已使用
+        long usedMemory = jvmTotalMemoryByte - freeMemoryByte;
+        // 已使用JVM内存百分比
+        float usePercent = usedMemory * 1f / jvmMaxMoryByte;
+        return usePercent;
     }
 
     private static class Inner implements Delayed {

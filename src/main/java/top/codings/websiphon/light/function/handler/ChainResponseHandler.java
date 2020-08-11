@@ -99,9 +99,9 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
     }
 
     @Override
-    public boolean push(IRequest request) {
+    public void handle(IRequest request) {
         normal = false;
-        return queue.offer(request);
+        queue.offer(request);
     }
 
     @Override

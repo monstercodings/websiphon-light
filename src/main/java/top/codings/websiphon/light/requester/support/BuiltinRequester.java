@@ -91,7 +91,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                                 request.requestResult.setSucceed(false);
                                 request.requestResult.setThrowable(new RuntimeException("出现了两参数均为空的异常现象"));
                             }
-                            responseHandler.push(request);
+                            responseHandler.handle(request);
                         } finally {
                             request.unlock();
                         }
