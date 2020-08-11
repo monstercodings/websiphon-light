@@ -72,7 +72,7 @@ public class TestTotal {
     }
 
     public ICrawler startup() throws Exception {
-        QpsDataStat stat = new QpsDataStat(5000);
+        QpsDataStat stat = new QpsDataStat(0);
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
                         .name("我的测试爬虫")

@@ -112,7 +112,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
     @Override
     public boolean isBusy() {
         return !(normal &&
-                token.availablePermits() == config.getMaxConcurrentProcessing() &&
+                token.availablePermits() == config.getMaxConcurrentProcessing() - 1 &&
                 queue.isEmpty()
         );
     }
