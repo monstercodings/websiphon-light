@@ -9,12 +9,12 @@ import top.codings.websiphon.light.requester.support.FakeRequester;
 import java.util.Map;
 
 public class FakeCrawler extends CombineCrawler implements ReplaceableCrawler {
-    private Map<String, String> builtHeaders;
+    private Map<String, Object> builtHeaders;
 
     public FakeCrawler() {
     }
 
-    public FakeCrawler(Map<String, String> builtHeaders) {
+    public FakeCrawler(Map<String, Object> builtHeaders) {
         this.builtHeaders = builtHeaders;
     }
 

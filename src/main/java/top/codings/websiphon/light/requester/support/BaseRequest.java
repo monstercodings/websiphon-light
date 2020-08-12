@@ -4,15 +4,18 @@ import lombok.Getter;
 import lombok.Setter;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.net.URI;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Getter
-public abstract class BaseRequest<Q, R> implements IRequest<Q, R> {
+public abstract class BaseRequest<T> implements IRequest<T> {
     protected volatile IRequest.Status status;
     @Setter
     protected Object userData;
     @Setter
     protected volatile RequestResult requestResult;
+    @Setter
+    protected URI uri;
     private ReentrantLock lock = new ReentrantLock();
 
     @Override

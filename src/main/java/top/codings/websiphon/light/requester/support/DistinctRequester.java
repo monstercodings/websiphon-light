@@ -11,7 +11,6 @@ import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.SyncRequester;
 
-import java.net.http.HttpRequest;
 import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 
@@ -54,14 +53,7 @@ public class DistinctRequester extends CombineRequester<IRequest> implements Asy
 
     @Override
     public CompletableFuture<IRequest> executeAsync(IRequest request) {
-        String url = null;
-        if (request instanceof BuiltinRequest) {
-            url = ((HttpRequest) request.getHttpRequest()).uri().toString();
-        } else if (request instanceof ApacheRequest) {
-            url = ((ApacheRequest) request).getHttpRequest().getURI().toString();
-        } else if (request instanceof NettyRequest) {
-            url = ((NettyRequest) request).httpResponse.getUri().toString();
-        }
+        String url = request.getUri().toString();
         if (StringUtils.isNotBlank(url) && filter.put(url)) {
             return requester.executeAsync(request);
         }

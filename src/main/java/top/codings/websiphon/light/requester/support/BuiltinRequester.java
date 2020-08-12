@@ -82,6 +82,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                                 request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
                                 return;
                             }
+                            request.requestResult.setCode(httpResponse.statusCode());
                             request.setStatus(IRequest.Status.RESPONSE);
                             if (httpResponse != null) {
                                 handleSucceed(request, httpResponse);
@@ -131,7 +132,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
         String contentType = null;
         try {
             request.httpRequest = httpResponse.request();
-            request.httpResponse = httpResponse;
+            request.setUri(request.httpRequest.uri());
             String mimeType;
             Charset charset = null;
             contentType = httpResponse.headers().firstValue("content-type").orElse("");

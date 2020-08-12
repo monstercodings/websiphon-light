@@ -213,7 +213,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
                         }
                     }
                 }
-                request.setHttpResponse(result);
+                request.requestResult.setCode(result.getStatusLine().getStatusCode());
                 request.requestResult.setSucceed(true);
                 String mimeType = "text/html";
                 Charset charset = null;

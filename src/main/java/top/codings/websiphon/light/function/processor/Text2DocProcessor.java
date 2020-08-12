@@ -6,25 +6,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.support.ApacheRequest;
-import top.codings.websiphon.light.requester.support.BuiltinRequest;
-import top.codings.websiphon.light.requester.support.NettyRequest;
 
 @Slf4j
 @NoArgsConstructor
 public class Text2DocProcessor extends AbstractProcessor<String> {
     @Override
     protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
-        int code = -1;
-        if (request instanceof BuiltinRequest) {
-            code = ((BuiltinRequest) request).getHttpResponse().statusCode();
-        } else if (request instanceof ApacheRequest) {
-            code = ((ApacheRequest) request).getHttpResponse().getStatusLine().getStatusCode();
-        } else if (request instanceof NettyRequest) {
-            code = ((NettyRequest) request).getHttpResponse().getCode();
+        if (!request.getRequestResult().isSucceed()) {
+            return null;
         }
+        int code = request.getRequestResult().getCode();
         if (code < 200 || code >= 300) {
             return null;
         }

@@ -7,6 +7,7 @@ import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.BaseRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class DoNothingRequester extends CombineRequester implements AsyncRequester {
@@ -44,17 +45,12 @@ public class DoNothingRequester extends CombineRequester implements AsyncRequest
             }
 
             @Override
-            public Object getHttpResponse() {
-                return null;
-            }
-
-            @Override
             public void setHttpRequest(Object httpRequest) {
 
             }
 
             @Override
-            public void setHttpResponse(Object httpResponse) {
+            public void setHeaders(Map headers) {
 
             }
         };

@@ -4,21 +4,25 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
-public interface IRequest<Q, R> {
-    Q getHttpRequest();
+import java.net.URI;
+import java.util.Map;
 
-    R getHttpResponse();
+public interface IRequest<T> {
+    T getHttpRequest();
 
-    void setHttpRequest(Q httpRequest);
-
-    void setHttpResponse(R httpResponse);
+    void setHttpRequest(T httpRequest);
 
     RequestResult getRequestResult();
 
     void setRequestResult(RequestResult requestResult);
 
+    URI getUri();
+
+    void setHeaders(Map<String, Object> headers);
+
     /**
      * 获取当前请求对象的状态
+     *
      * @return
      */
     Status getStatus();
@@ -48,6 +52,8 @@ public interface IRequest<Q, R> {
         Throwable throwable;
         @Getter
         ResponseType responseType;
+        @Getter
+        int code = -1;
         Object data;
 
         public Throwable cause() {

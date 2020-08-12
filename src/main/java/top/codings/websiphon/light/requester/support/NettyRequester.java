@@ -121,7 +121,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                                 return;
                                             }
                                             int code = httpResponse.status().code();
-                                            request.httpResponse.setCode(code);
+                                            request.requestResult.setCode(code);
                                             if (code < 200 || code >= 300) {
                                                 request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
                                                 responseHandler.handle(request);
@@ -208,7 +208,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                     }
                 })
         ;
-        URI uri = request.httpResponse.getUri();
+        URI uri = request.getUri();
         String scheme = uri.getScheme();
         String host = uri.getHost();
         int port = uri.getPort();
@@ -283,7 +283,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
         }
         HttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path, Unpooled.EMPTY_BUFFER);
         NettyRequest request = new NettyRequest(httpRequest, userData);
-        request.setHttpResponse(new NettyRequest.HttpResponse(uri));
+        request.setUri(uri);
         return request;
     }
 

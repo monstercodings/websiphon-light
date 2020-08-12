@@ -194,20 +194,21 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
 
     private void checkMemory() throws InterruptedException {
         boolean first = true;
-        int loop = 0;
         float usePercent;
+        long startTime = 0;
         while ((usePercent = _checkMemory()) > limitMemory) {
-            loop++;
             if (first) {
                 first = false;
-                log.warn("内存使用百分比超出设定阈值，当前使用{}%", String.format("%.2f", usePercent * 100f));
+                startTime = System.currentTimeMillis();
+                if (log.isDebugEnabled()) {
+                    log.debug("内存使用百分比超出设定阈值{}%，当前使用{}%", String.format("%.2f", limitMemory * 100f), String.format("%.2f", usePercent * 100f));
+                }
             }
-            TimeUnit.SECONDS.sleep(10);
+            Thread.onSpinWait();
             if (log.isTraceEnabled()) {
                 log.trace("休眠结束，再次检查内存占用情况 | {}%", String.format("%.2f", usePercent * 100f));
             }
-            if (loop > 6) {
-                loop = 0;
+            if (System.currentTimeMillis() - startTime > 60 * 1000l) {
                 first = true;
             }
         }
