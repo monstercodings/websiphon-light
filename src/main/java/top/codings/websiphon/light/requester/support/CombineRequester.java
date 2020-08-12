@@ -1,7 +1,5 @@
 package top.codings.websiphon.light.requester.support;
 
-import lombok.Getter;
-import lombok.Setter;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
@@ -11,8 +9,6 @@ import java.util.concurrent.CompletableFuture;
 public abstract class CombineRequester<T extends IRequest> implements IRequester<T> {
     protected CombineRequester<T> requester;
     private Class<T> requestClass;
-    @Setter
-    @Getter
     private IRequester.NetworkErrorStrategy strategy = IRequester.NetworkErrorStrategy.DROP;
 
     protected CombineRequester(CombineRequester requester) {
@@ -89,5 +85,13 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
             return requester.getResponseHandler();
         }
         throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+    }
+
+    public final NetworkErrorStrategy getStrategy() {
+        return strategy;
+    }
+
+    public final void setStrategy(NetworkErrorStrategy strategy) {
+        this.strategy = strategy;
     }
 }
