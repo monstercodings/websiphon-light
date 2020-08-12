@@ -3,6 +3,7 @@ package top.codings.websiphon.light.requester.support;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
@@ -10,7 +11,7 @@ import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.SyncRequester;
 
 import java.util.concurrent.*;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 @Slf4j
 public class RateLimitRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
@@ -25,7 +26,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     private LinkedTransferQueue<IRequest> queue;
     private DelayQueue<Inner> timeoutQueue;
     private ExecutorService exe;
-    private Consumer<IRequest> timeoutHandler;
+    private BiConsumer<IRequest, ICrawler> timeoutHandler;
     @Setter
     private CombineCrawler crawler;
     /**
@@ -37,7 +38,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
         this(requester, maxNetworkConcurrency, null);
     }
 
-    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, Consumer<IRequest> timeoutHandler) {
+    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, BiConsumer<IRequest, ICrawler> timeoutHandler) {
         super(requester);
         this.maxNetworkConcurrency = maxNetworkConcurrency;
         if (maxNetworkConcurrency > 0) {
@@ -115,7 +116,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                             case WAIT, READY, REQUEST -> {
                                 if (null != timeoutHandler) {
                                     try {
-                                        timeoutHandler.accept(inner.request);
+                                        timeoutHandler.accept(inner.request, crawler.wrapper());
                                     } catch (Exception e) {
                                         log.error("请求对象超时处理失败", e);
                                     }

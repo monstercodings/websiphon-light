@@ -28,7 +28,9 @@ public class RegressionTesting {
                 .wrapBy(new FiltrateCrawler())
                 .wrapBy(new RateLimitCrawler(0.9f));
         crawler.startup();
-        crawler.push("https://www.baidu.com:8080");
-        Thread.currentThread().join();
+        crawler.push("https://www.baidu.com");
+        while (crawler.isBusy()) {
+            Thread.onSpinWait();
+        }
     }
 }
