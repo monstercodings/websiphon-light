@@ -14,7 +14,7 @@ public class BuiltinRequest extends BaseRequest<HttpRequest> {
     protected HttpRequest httpRequest;
 
     public BuiltinRequest(HttpRequest httpRequest) {
-        this.httpRequest = httpRequest;
+        this(httpRequest, null);
     }
 
     public BuiltinRequest(HttpRequest httpRequest, Object data) {

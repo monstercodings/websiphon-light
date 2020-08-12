@@ -12,7 +12,7 @@ public class ApacheRequest extends BaseRequest<HttpRequestBase> {
     protected HttpRequestBase httpRequest;
 
     public ApacheRequest(HttpRequestBase httpRequest) {
-        this.httpRequest = httpRequest;
+        this(httpRequest, null);
     }
 
     public ApacheRequest(HttpRequestBase httpRequest, Object userData) {
