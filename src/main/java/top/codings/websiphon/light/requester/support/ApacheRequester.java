@@ -20,7 +20,6 @@ import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
-import org.apache.http.impl.NoConnectionReuseStrategy;
 import org.apache.http.impl.client.DefaultClientConnectionReuseStrategy;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
@@ -31,6 +30,7 @@ import org.apache.http.util.EntityUtils;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
+import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import java.io.ByteArrayInputStream;
@@ -336,6 +336,9 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
             verifyStatus(o -> {
                 request.requestResult.setSucceed(false);
                 request.requestResult.setThrowable(ex);
+                if (getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
+                    return;
+                }
                 responseHandler.handle(request);
             });
         }
@@ -345,6 +348,9 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
             verifyStatus(o -> {
                 request.requestResult.setSucceed(false);
                 request.requestResult.setThrowable(new RuntimeException("请求被取消"));
+                if (getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
+                    return;
+                }
                 responseHandler.handle(request);
             });
         }

@@ -23,6 +23,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
+import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.SSLContext;
@@ -188,6 +189,9 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                             request.requestResult = new IRequest.RequestResult();
                                             request.requestResult.setThrowable(cause);
                                             request.requestResult.setSucceed(false);
+                                            if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
+                                                responseHandler.handle(request);
+                                            }
                                         } finally {
                                             request.unlock();
                                             ctx.close();
@@ -241,25 +245,28 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
 //                        .set("Upgrade-Insecure-Requests", "1")
 //                        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
                 ;
-                channelFuture.channel().writeAndFlush(httpRequest).addListener((ChannelFutureListener) channelFuture1 -> {
-                    if (!channelFuture1.isSuccess()) {
-                        request.setStatus(IRequest.Status.ERROR);
-                        request.requestResult = new IRequest.RequestResult();
-                        request.requestResult.setSucceed(false);
-                        request.requestResult.setThrowable(channelFuture1.cause());
-                        channelFuture1.channel().close();
+                channelFuture.channel().writeAndFlush(httpRequest).addListener((ChannelFutureListener) innerFuture -> {
+                    if (!innerFuture.isSuccess()) {
+                        channelError(request, innerFuture);
                     }
                 });
             } else {
-                request.setStatus(IRequest.Status.ERROR);
-                request.requestResult = new IRequest.RequestResult();
-                request.requestResult.setSucceed(false);
-                request.requestResult.setThrowable(channelFuture.cause());
-                channelFuture.channel().close();
+                channelError(request, channelFuture);
             }
         });
 
         return cf;
+    }
+
+    private void channelError(NettyRequest request, ChannelFuture future) {
+        request.setStatus(IRequest.Status.ERROR);
+        request.requestResult = new IRequest.RequestResult();
+        request.requestResult.setSucceed(false);
+        request.requestResult.setThrowable(future.cause());
+        if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
+            responseHandler.handle(request);
+        }
+        future.channel().close();
     }
 
     @Override

@@ -24,7 +24,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
     /**
      * 用于防止非原子操作造成的任务完成情况误判
      */
-    private volatile boolean normal;
+    private volatile boolean normal = true;
 
     @Override
     public void startup(ICrawler crawler) {

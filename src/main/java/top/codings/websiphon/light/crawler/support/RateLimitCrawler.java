@@ -1,6 +1,5 @@
 package top.codings.websiphon.light.crawler.support;
 
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.RateLimitableCrawler;
@@ -12,9 +11,23 @@ import java.util.function.Consumer;
 
 @NoArgsConstructor
 public class RateLimitCrawler extends CombineCrawler implements RateLimitableCrawler {
+    private final static float DEFAULT_LIMIT_MEMORY = 0.7f;
+    private float limitMemory = DEFAULT_LIMIT_MEMORY;
     private Consumer<IRequest> timeoutHandler;
 
+    public RateLimitCrawler(float limitMemory) {
+        this(limitMemory, null);
+    }
+
     public RateLimitCrawler(Consumer<IRequest> timeoutHandler) {
+        this(DEFAULT_LIMIT_MEMORY, timeoutHandler);
+    }
+
+    public RateLimitCrawler(float limitMemory, Consumer<IRequest> timeoutHandler) {
+        if (limitMemory > 1f) {
+            throw new RuntimeException("内存限制阈值只能为[0,1]");
+        }
+        this.limitMemory = limitMemory;
         this.timeoutHandler = timeoutHandler;
     }
 
@@ -26,6 +39,7 @@ public class RateLimitCrawler extends CombineCrawler implements RateLimitableCra
                 config.getMaxNetworkConcurrency()
         );
         requester.setCrawler(this);
+        requester.setLimitMemory(limitMemory);
         setRequester(requester);
     }
 

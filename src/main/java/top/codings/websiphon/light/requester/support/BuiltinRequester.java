@@ -10,6 +10,7 @@ import org.apache.http.util.CharsetUtils;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
+import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.*;
@@ -90,6 +91,9 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                                 log.error("出现了两参数均为空的异常现象!");
                                 request.requestResult.setSucceed(false);
                                 request.requestResult.setThrowable(new RuntimeException("出现了两参数均为空的异常现象"));
+                            }
+                            if (throwable != null && getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
+                                return;
                             }
                             responseHandler.handle(request);
                         } finally {

@@ -41,10 +41,14 @@ public class BaseCrawler extends CombineCrawler {
         responseHandler.setConfig(config);
         this.responseHandler = responseHandler;
         if (null == requester) {
-            setRequester((CombineRequester) IRequester
+            CombineRequester combineRequester = (CombineRequester) IRequester
                     .newBuilder(config)
                     .responseHandler(responseHandler)
-                    .build());
+                    .build();
+            if (config.getNetworkErrorStrategy() != null) {
+                combineRequester.setStrategy(config.getNetworkErrorStrategy());
+            }
+            setRequester(combineRequester);
         }
     }
 

@@ -62,8 +62,8 @@ public abstract class CombineCrawler implements ICrawler {
     /**
      * 对目标爬虫进行代理
      *
-     * @param wrapper 被代理的爬虫
-     * @return 返回被代理的爬虫
+     * @param wrapper 代理爬虫
+     * @return 代理爬虫
      */
     public final CombineCrawler wrapBy(CombineCrawler wrapper) {
         this.prev = wrapper;

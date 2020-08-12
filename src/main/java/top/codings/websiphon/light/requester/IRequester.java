@@ -41,6 +41,11 @@ public interface IRequester<T extends IRequest> {
 
     IResponseHandler getResponseHandler();
 
+    enum NetworkErrorStrategy {
+        RESPONSE(),
+        DROP(),
+    }
+
     static RequesterBuilder newBuilder(CrawlerConfig config) {
         return new RequesterBuilder(config);
     }

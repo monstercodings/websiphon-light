@@ -3,6 +3,7 @@ package top.codings.websiphon.light.config;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import top.codings.websiphon.light.requester.IRequester;
 
 @Getter
 @Builder
@@ -40,4 +41,8 @@ public class CrawlerConfig {
      * 响应处理器的加载器
      */
     private ClassLoader classLoader;
+    /**
+     * 网络异常时的请求对象的处理策略
+     */
+    private IRequester.NetworkErrorStrategy networkErrorStrategy;
 }

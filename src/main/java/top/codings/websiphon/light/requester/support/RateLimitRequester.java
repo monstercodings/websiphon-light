@@ -14,6 +14,12 @@ import java.util.function.Consumer;
 
 @Slf4j
 public class RateLimitRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
+    /**
+     * 限制内存占用的阈值
+     * 设置<=0的话则不做限制
+     */
+    @Setter
+    private float limitMemory;
     private Semaphore token;
     private int maxNetworkConcurrency;
     private LinkedTransferQueue<IRequest> queue;
@@ -46,14 +52,12 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
         timeoutQueue = new DelayQueue<>();
         exe = Executors.newFixedThreadPool(2);
         exe.submit(() -> {
-            try {
-                System.out.println(_checkMemory() + "");
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            // TODO 未来做智能阈值
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    checkMemory();
+                    if (limitMemory > 0) {
+                        checkMemory();
+                    }
                     IRequest request;
                     // 先阻塞获取任务
                     request = queue.poll(30, TimeUnit.SECONDS);
@@ -191,7 +195,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
         boolean first = true;
         int loop = 0;
         float usePercent;
-        while ((usePercent = _checkMemory()) > 0.7f) {
+        while ((usePercent = _checkMemory()) > limitMemory) {
             loop++;
             if (first) {
                 first = false;

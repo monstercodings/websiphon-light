@@ -1,5 +1,7 @@
 package top.codings.websiphon.light.requester.support;
 
+import lombok.Getter;
+import lombok.Setter;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
@@ -9,6 +11,9 @@ import java.util.concurrent.CompletableFuture;
 public abstract class CombineRequester<T extends IRequest> implements IRequester<T> {
     protected CombineRequester<T> requester;
     private Class<T> requestClass;
+    @Setter
+    @Getter
+    private IRequester.NetworkErrorStrategy strategy = IRequester.NetworkErrorStrategy.DROP;
 
     protected CombineRequester(CombineRequester requester) {
         this.requester = requester;
