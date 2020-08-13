@@ -20,10 +20,6 @@ public class CrawlerConfig {
      */
     private String version;
     /**
-     * 是否使用异步模式
-     */
-    private boolean sync;
-    /**
      * 最大处理响应线程数
      */
     @Setter

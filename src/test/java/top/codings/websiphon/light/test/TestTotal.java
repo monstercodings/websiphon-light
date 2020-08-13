@@ -1,10 +1,12 @@
 package top.codings.websiphon.light.test;
 
+import com.alibaba.fastjson.JSON;
 import com.sun.net.httpserver.HttpServer;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
+import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
 
@@ -16,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 public class TestTotal {
@@ -84,7 +87,11 @@ public class TestTotal {
 //                        .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
 //                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheRequester")
                         .requesterClass("top.codings.websiphon.light.requester.support.NettyRequester")
-                        .shutdownHook(spider -> log.debug("[{}] 爬虫关闭", spider.config().getName()))
+                        .shutdownHook(spider -> {
+                            AtomicReference<String> statStr = new AtomicReference<>();
+                            ((CombineCrawler) spider).find(StatCrawler.class).ifPresent(statCrawler -> statStr.set(JSON.toJSONString(statCrawler.stat().output(), true)));
+                            log.debug("[{}] 爬虫关闭\n{}", spider.config().getName(), statStr);
+                        })
                         .build())
                 .wrapBy(new StatCrawler<>(stat, true))
                 .wrapBy(new FakeCrawler())

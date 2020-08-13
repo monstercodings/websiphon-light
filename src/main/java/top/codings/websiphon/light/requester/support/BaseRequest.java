@@ -54,6 +54,5 @@ public abstract class BaseRequest<T> implements IRequest<T> {
         userData = null;
         requestResult.setThrowable(null);
         requestResult.setData(null);
-        requestResult = null;
     }
 }

@@ -5,8 +5,6 @@ import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
 import top.codings.websiphon.light.requester.IRequester;
-import top.codings.websiphon.light.requester.support.ApacheRequester;
-import top.codings.websiphon.light.requester.support.BuiltinRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
 import top.codings.websiphon.light.test.dependent.TestResponseHandler;
 
@@ -21,7 +19,6 @@ public class RegressionTesting {
                 CrawlerConfig.builder()
                         .name("test")
                         .version("0.0.1")
-                        .sync(false)
 //                        .requesterClass(DoNothingRequester.class.getName())
                         .requesterClass(NettyRequester.class.getName())
 //                        .requesterClass(ApacheRequester.class.getName())
@@ -34,8 +31,7 @@ public class RegressionTesting {
                 .wrapBy(new StatCrawler<>(stat))
                 .wrapBy(new FakeCrawler())
                 .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler(0.95f, (iRequest, c) -> System.out.println("超时弹出")))
-                ;
+                .wrapBy(new RateLimitCrawler(0.95f, (iRequest, c) -> System.out.println("超时弹出")));
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
             c.push("https://www.baidu.com");

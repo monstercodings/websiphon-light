@@ -21,8 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.ssl.SSLContextBuilder;
 import top.codings.websiphon.light.error.FrameworkException;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
@@ -37,13 +36,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class NettyRequester extends CombineRequester<NettyRequest> implements AsyncRequester<NettyRequest> {
+public class NettyRequester extends CombineRequester<NettyRequest> {
     private Bootstrap bootstrap;
     private NioEventLoopGroup workerGroup;
     private SSLContext sslContext;
-    @Setter
     @Getter
-    private QueueResponseHandler responseHandler;
+    @Setter
+    private IResponseHandler responseHandler;
 
     public NettyRequester() {
         this(null);
@@ -202,7 +201,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
     }
 
     @Override
-    public CompletableFuture<NettyRequest> executeAsync(final NettyRequest request) {
+    public CompletableFuture<NettyRequest> execute(final NettyRequest request) {
         CompletableFuture<NettyRequest> cf = new CompletableFuture();
         URI uri = request.getUri();
         String scheme = uri.getScheme();

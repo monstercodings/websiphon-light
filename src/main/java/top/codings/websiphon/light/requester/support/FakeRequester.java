@@ -1,8 +1,6 @@
 package top.codings.websiphon.light.requester.support;
 
 import lombok.extern.slf4j.Slf4j;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.HashMap;
@@ -10,7 +8,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
-public class FakeRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest> {
+public class FakeRequester extends CombineRequester<IRequest> {
     private Map<String, Object> builtHeaders;
 
     public FakeRequester(CombineRequester requester) {
@@ -19,9 +17,6 @@ public class FakeRequester extends CombineRequester<IRequest> implements AsyncRe
 
     public FakeRequester(CombineRequester requester, Map<String, Object> builtHeaders) {
         super(requester);
-        if (!(requester instanceof AsyncRequester)) {
-            throw new RuntimeException("伪装头代理请求器必须基于异步请求器");
-        }
         if (null == builtHeaders) {
             builtHeaders = new HashMap<>();
             builtHeaders.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3");
@@ -38,13 +33,8 @@ public class FakeRequester extends CombineRequester<IRequest> implements AsyncRe
     }
 
     @Override
-    public CompletableFuture<IRequest> executeAsync(IRequest request) {
+    public CompletableFuture<IRequest> execute(IRequest request) {
         request.setHeaders(builtHeaders);
-        return requester.executeAsync(request);
-    }
-
-    @Override
-    public void setResponseHandler(QueueResponseHandler responseHandler) {
-        ((AsyncRequester) requester).setResponseHandler(responseHandler);
+        return super.execute(request);
     }
 }

@@ -19,7 +19,7 @@ public class TestResponseHandler extends StatResponseHandler {
         return new AbstractProcessor<String>() {
             @Override
             protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
-                log.debug("响应内容:{}", (data.length() > 20 ? data.substring(0, 20) : data));
+                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(),(data.length() > 20 ? data.substring(0, 20) : data));
                 return data;
             }
         }.next(new JSONProcessor());

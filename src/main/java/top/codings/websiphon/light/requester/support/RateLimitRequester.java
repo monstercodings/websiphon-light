@@ -7,16 +7,14 @@ import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
-import top.codings.websiphon.light.requester.SyncRequester;
 
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 
 @Slf4j
-public class RateLimitRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
+public class RateLimitRequester extends CombineRequester<IRequest> {
     private final static String NAME = "并发限制请求器";
     /**
      * 限制内存占用的阈值
@@ -78,7 +76,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                         request.setStatus(IRequest.Status.REQUEST);
                         Inner inner = new Inner(request);
                         timeoutQueue.offer(inner);
-                        requester.executeAsync(request)
+                        requester.execute(request)
                                 .whenCompleteAsync((aVoid, throwable) -> {
                                     if (timeoutQueue.remove(inner)) {
                                         if (null != token) {
@@ -163,7 +161,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     }
 
     @Override
-    public CompletableFuture<IRequest> executeAsync(IRequest request) {
+    public CompletableFuture<IRequest> execute(IRequest request) {
         normal = false;
         request.setStatus(IRequest.Status.READY);
         return CompletableFuture.supplyAsync(() -> {
@@ -190,11 +188,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     }
 
     @Override
-    public void setResponseHandler(IResponseHandler responseHandler) {
-        ((SyncRequester) requester).setResponseHandler(responseHandler);
-    }
-
-    @Override
     public boolean isBusy() {
         if (log.isTraceEnabled()) {
             log.trace("正常状态:{} | 剩余令牌:{} | 队列为空:{}", normal, token.availablePermits(), queue.isEmpty());
@@ -204,11 +197,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                 tokenStatu &&
                 queue.isEmpty())
                 ;
-    }
-
-    @Override
-    public void setResponseHandler(QueueResponseHandler responseHandler) {
-        ((AsyncRequester) requester).setResponseHandler(responseHandler);
     }
 
     private void checkMemory() throws InterruptedException {

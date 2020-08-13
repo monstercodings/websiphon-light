@@ -1,5 +1,6 @@
 package top.codings.websiphon.light.requester.support;
 
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
@@ -16,7 +17,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         /*Class currentClass = this.getClass();
         Type genericSuperType = currentClass.getGenericSuperclass();
         if (!(genericSuperType instanceof ParameterizedType)) {
-            throw new RuntimeException("泛型读取异常");
+            throw new FrameworkException("泛型读取异常");
         }
         Type[] actualTypeParams = ((ParameterizedType) genericSuperType).getActualTypeArguments();
         Type actualTypeParam = actualTypeParams[0];
@@ -34,15 +35,15 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.init();
         }
-        throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }
 
     @Override
-    public CompletableFuture<T> executeAsync(T request) {
+    public CompletableFuture<T> execute(T request) {
         if (null != requester) {
-            return requester.executeAsync(request);
+            return requester.execute(request);
         }
-        throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }
 
     @Override
@@ -50,7 +51,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.create(url);
         }
-        throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }
 
     @Override
@@ -58,7 +59,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.create(url, userData);
         }
-        throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }
 
     @Override
@@ -66,7 +67,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.shutdown(force);
         }
-        throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }
 
     @Override
@@ -78,11 +79,20 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
     }
 
     @Override
+    public void setResponseHandler(IResponseHandler responseHandler) {
+        if (null != requester) {
+            requester.setResponseHandler(responseHandler);
+            return;
+        }
+        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+    }
+
+    @Override
     public IResponseHandler getResponseHandler() {
         if (null != requester) {
             return requester.getResponseHandler();
         }
-        throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
+        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }
 
     public final NetworkErrorStrategy getStrategy() {

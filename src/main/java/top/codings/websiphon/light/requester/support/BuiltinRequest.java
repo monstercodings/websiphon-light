@@ -54,6 +54,5 @@ public class BuiltinRequest extends BaseRequest<HttpRequest> {
         super.release();
         httpRequest = null;
         userData = null;
-        requestResult = null;
     }
 }

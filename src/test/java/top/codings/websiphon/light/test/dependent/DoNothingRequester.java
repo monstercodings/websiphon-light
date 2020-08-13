@@ -2,7 +2,6 @@ package top.codings.websiphon.light.test.dependent;
 
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.BaseRequest;
@@ -11,7 +10,7 @@ import top.codings.websiphon.light.requester.support.CombineRequester;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-public class DoNothingRequester extends CombineRequester implements AsyncRequester {
+public class DoNothingRequester extends CombineRequester {
     private QueueResponseHandler queueResponseHandler;
 
     public DoNothingRequester() {
@@ -28,7 +27,7 @@ public class DoNothingRequester extends CombineRequester implements AsyncRequest
     }
 
     @Override
-    public CompletableFuture executeAsync(IRequest request) {
+    public CompletableFuture execute(IRequest request) {
         return new CompletableFuture();
     }
 
@@ -65,10 +64,5 @@ public class DoNothingRequester extends CombineRequester implements AsyncRequest
     @Override
     public CompletableFuture<IRequester> shutdown(boolean force) {
         return CompletableFuture.completedFuture(this);
-    }
-
-    @Override
-    public void setResponseHandler(QueueResponseHandler responseHandler) {
-        this.queueResponseHandler = responseHandler;
     }
 }

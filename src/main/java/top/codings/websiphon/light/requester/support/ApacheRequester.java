@@ -29,8 +29,8 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import org.apache.http.util.EntityUtils;
 import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
@@ -46,13 +46,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public class ApacheRequester extends CombineRequester<ApacheRequest> implements AsyncRequester<ApacheRequest> {
+public class ApacheRequester extends CombineRequester<ApacheRequest> {
     private String contentTypePattern = "([a-z]+/[^;\\.]+);?\\s?(charset=)?(.*)";
     private Pattern pattern = Pattern.compile(contentTypePattern, Pattern.CASE_INSENSITIVE);
-
-    @Setter
     @Getter
-    private QueueResponseHandler responseHandler;
+    @Setter
+    private IResponseHandler responseHandler;
+
     private boolean redirect;
     private CloseableHttpAsyncClient client;
     private RequestConfig config;
@@ -122,7 +122,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
     }
 
     @Override
-    public CompletableFuture<ApacheRequest> executeAsync(ApacheRequest request) {
+    public CompletableFuture<ApacheRequest> execute(ApacheRequest request) {
         HttpUriRequest httpRequest = request.getHttpRequest();
         HttpClientContext context = HttpClientContext.create();
 //        context.setAttribute("webRequest", request);

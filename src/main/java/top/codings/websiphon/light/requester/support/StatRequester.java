@@ -5,8 +5,6 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.bean.DataStat;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 
@@ -16,7 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class StatRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest> {
+public class StatRequester extends CombineRequester<IRequest> {
     private final static String NAME = "统计请求器";
     @Setter
     private boolean debug;
@@ -73,8 +71,8 @@ public class StatRequester extends CombineRequester<IRequest> implements AsyncRe
     }
 
     @Override
-    public CompletableFuture<IRequest> executeAsync(IRequest request) {
-        return requester.executeAsync(request).whenCompleteAsync((req, throwable) -> {
+    public CompletableFuture<IRequest> execute(IRequest request) {
+        return super.execute(request).whenCompleteAsync((req, throwable) -> {
             dataStat.getRequestCountTotal().increment();
             if (req.getRequestResult().isSucceed()) {
                 dataStat.getNetworkRequestSuccessCountTotal().increment();
@@ -82,8 +80,4 @@ public class StatRequester extends CombineRequester<IRequest> implements AsyncRe
         });
     }
 
-    @Override
-    public void setResponseHandler(QueueResponseHandler responseHandler) {
-        ((AsyncRequester) requester).setResponseHandler(responseHandler);
-    }
 }

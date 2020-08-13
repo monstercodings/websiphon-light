@@ -58,7 +58,7 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public void push(IRequest request) {
-        getRequester().executeAsync(request);
+        getRequester().execute(request);
     }
 
     @Override

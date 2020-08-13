@@ -8,8 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import top.codings.websiphon.light.error.FrameworkException;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
@@ -32,10 +31,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public class BuiltinRequester extends CombineRequester<BuiltinRequest> implements AsyncRequester<BuiltinRequest> {
+public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     @Setter
     @Getter
-    private QueueResponseHandler responseHandler;
+    private IResponseHandler responseHandler;
     private HttpClient client;
     private ExecutorService executorService;
 
@@ -69,7 +68,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
     }
 
     @Override
-    public CompletableFuture<BuiltinRequest> executeAsync(final BuiltinRequest request) {
+    public CompletableFuture<BuiltinRequest> execute(final BuiltinRequest request) {
         try {
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
