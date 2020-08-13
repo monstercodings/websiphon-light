@@ -89,7 +89,7 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public CompletableFuture<ICrawler> shutdown() {
-        CompletableFuture<ICrawler> completableFuture = CompletableFuture.supplyAsync(() -> this.wrapper());
+        CompletableFuture<ICrawler> completableFuture = CompletableFuture.completedFuture(this.wrapper());
         boolean force = true;
         IRequester requester = getRequester();
         if (requester != null) {
