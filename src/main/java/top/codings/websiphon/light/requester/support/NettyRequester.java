@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.ssl.SSLContextBuilder;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
@@ -52,13 +53,14 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
     }
 
     @Override
-    public void init() {
+    public CompletableFuture<IRequester> init() {
         workerGroup = new NioEventLoopGroup();
         try {
             sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
         } catch (Exception e) {
-            throw new RuntimeException("初始化SSL套件失败", e);
+            return CompletableFuture.failedFuture(new FrameworkException("初始化SSL套件失败", e));
         }
+        return CompletableFuture.completedFuture(this);
     }
 
     @Override
@@ -288,11 +290,13 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
     }
 
     @Override
-    public void shutdown(boolean force) {
+    public CompletableFuture<IRequester> shutdown(boolean force) {
+        CompletableFuture completableFuture = new CompletableFuture();
         workerGroup.shutdownGracefully().addListener((GenericFutureListener<Future<? super Object>>) future -> {
-            responseHandler.shutdown(force);
             sslContext = null;
             workerGroup = null;
+            completableFuture.completeAsync(() -> this);
         });
+        return completableFuture;
     }
 }

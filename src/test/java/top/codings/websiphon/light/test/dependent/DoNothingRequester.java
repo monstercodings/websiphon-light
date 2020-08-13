@@ -4,6 +4,7 @@ import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
+import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.BaseRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 
@@ -22,8 +23,8 @@ public class DoNothingRequester extends CombineRequester implements AsyncRequest
     }
 
     @Override
-    public void init() {
-
+    public CompletableFuture<IRequester> init() {
+        return CompletableFuture.completedFuture(this);
     }
 
     @Override
@@ -62,8 +63,8 @@ public class DoNothingRequester extends CombineRequester implements AsyncRequest
     }
 
     @Override
-    public void shutdown(boolean force) {
-
+    public CompletableFuture<IRequester> shutdown(boolean force) {
+        return CompletableFuture.completedFuture(this);
     }
 
     @Override

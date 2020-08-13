@@ -27,6 +27,7 @@ import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import org.apache.http.util.EntityUtils;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
@@ -66,7 +67,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
     }
 
     @Override
-    public void init() {
+    public CompletableFuture<IRequester> init() {
         try {
             decoderRegistry = RegistryBuilder.<InputStreamFactory>create()
                     .register("gzip", GZIPInputStreamFactory.getInstance())
@@ -113,8 +114,10 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
                     .build();
             client.start();
         } catch (Exception e) {
-            throw new RuntimeException("初始化请求器失败", e);
+//            log.error("初始化请求器失败", e);
+            return CompletableFuture.failedFuture(new FrameworkException("初始化请求器失败", e));
         }
+        return CompletableFuture.completedFuture(this);
     }
 
     @Override
@@ -149,7 +152,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
     }
 
     @Override
-    public void shutdown(boolean force) {
+    public CompletableFuture<IRequester> shutdown(boolean force) {
         if (null != client) {
             try {
                 client.close();
@@ -157,9 +160,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
                 log.error("关闭HTTP请求器异常", e);
             }
         }
-        if (null != responseHandler) {
-            responseHandler.shutdown(force);
-        }
+        return CompletableFuture.completedFuture(this);
     }
 
     private interface Task<T> {

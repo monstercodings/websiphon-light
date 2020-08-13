@@ -2,10 +2,12 @@ package top.codings.websiphon.light.crawler.support;
 
 import top.codings.websiphon.light.config.RegistryConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.RegistrableCrawler;
 import top.codings.websiphon.light.function.registry.IRegistry;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public class RegistryCrawler extends CombineCrawler implements RegistrableCrawler {
     private RegistryConfig registryConfig;
@@ -32,21 +34,24 @@ public class RegistryCrawler extends CombineCrawler implements RegistrableCrawle
     }
 
     @Override
-    public void startup() {
-        super.startup();
+    public CompletableFuture<ICrawler> startup() {
+        CompletableFuture<ICrawler> completableFuture = super.startup();
         if (registryConfig.isEnabled()) {
             registry.setConfig(config, registryConfig);
             registry.setCrawler(this);
-            registry.startup();
+            return completableFuture.thenCombineAsync(registry.startup(), (crawler, iRegistry) -> crawler);
         }
+        return completableFuture;
     }
 
     @Override
-    public void shutdown() {
-        super.shutdown();
+    public CompletableFuture<ICrawler> shutdown() {
+        CompletableFuture cf = new CompletableFuture();
+        cf.completeAsync(() -> null);
         if (null != registry) {
-            registry.shutdown(true);
+            cf = registry.shutdown(true);
         }
+        return CompletableFuture.allOf(cf, super.shutdown()).thenApplyAsync(o -> this.wrapper());
     }
 
     @Override

@@ -30,10 +30,9 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
     }
 
     @Override
-    public void init() {
+    public CompletableFuture<IRequester> init() {
         if (null != requester) {
-            requester.init();
-            return;
+            return requester.init();
         }
         throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
     }
@@ -63,10 +62,9 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
     }
 
     @Override
-    public void shutdown(boolean force) {
+    public CompletableFuture<IRequester> shutdown(boolean force) {
         if (null != requester) {
-            requester.shutdown(force);
-            return;
+            return requester.shutdown(force);
         }
         throw new RuntimeException("非代理请求器必须实现自身执行逻辑");
     }

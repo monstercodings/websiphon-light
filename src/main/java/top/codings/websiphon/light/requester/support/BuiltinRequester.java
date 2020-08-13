@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
@@ -26,6 +27,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,7 +47,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
     }
 
     @Override
-    public void init() {
+    public CompletableFuture<IRequester> init() {
         try {
             SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
             sslContext.init(null, BuiltinTrustManager.get(), null);
@@ -61,8 +63,9 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
 //                                    .authenticator(Authenticator.getDefault())
                     .build();
         } catch (Exception e) {
-            throw new RuntimeException("初始化请求器失败", e);
+            return CompletableFuture.failedFuture(new FrameworkException("初始化请求器失败", e));
         }
+        return CompletableFuture.completedFuture(this);
     }
 
     @Override
@@ -82,14 +85,15 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                                 request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
                                 return;
                             }
-                            request.requestResult.setCode(httpResponse.statusCode());
-                            request.setStatus(IRequest.Status.RESPONSE);
                             if (httpResponse != null) {
+                                request.setStatus(IRequest.Status.RESPONSE);
+                                request.requestResult.setCode(httpResponse.statusCode());
                                 handleSucceed(request, httpResponse);
                             } else if (throwable != null) {
                                 handleThrowable(request, throwable);
                             } else {
                                 log.error("出现了两参数均为空的异常现象!");
+                                request.setStatus(IRequest.Status.ERROR);
                                 request.requestResult.setSucceed(false);
                                 request.requestResult.setThrowable(new RuntimeException("出现了两参数均为空的异常现象"));
                             }
@@ -105,10 +109,12 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                     ;
         } catch (Exception e) {
             log.error("内置请求器异常", e);
-            request.requestResult = new BuiltinRequest.RequestResult();
-            request.requestResult.setSucceed(false);
-            request.requestResult.setThrowable(e);
-            return CompletableFuture.completedFuture(request);
+            return CompletableFuture.supplyAsync(() -> {
+                request.requestResult = new BuiltinRequest.RequestResult();
+                request.requestResult.setSucceed(false);
+                request.requestResult.setThrowable(e);
+                return request;
+            });
         }
     }
 
@@ -184,20 +190,23 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
 
     private void handleThrowable(BuiltinRequest request, Throwable throwable) {
         request.requestResult.setSucceed(false);
+        request.setStatus(IRequest.Status.ERROR);
         request.requestResult.setThrowable(throwable.getCause());
     }
 
     @Override
-    public void shutdown(boolean force) {
-        if (null != executorService) {
-            if (force)
-                executorService.shutdownNow();
-            else
-                executorService.shutdown();
-        }
-        if (responseHandler != null) {
-            responseHandler.shutdown(true);
-        }
+    public CompletableFuture<IRequester> shutdown(boolean force) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (null != executorService) {
+                if (force) executorService.shutdownNow();
+                else executorService.shutdown();
+                try {
+                    executorService.awaitTermination(1, TimeUnit.MINUTES);
+                } catch (InterruptedException e) {
+                }
+            }
+            return this;
+        });
     }
 
     @Override

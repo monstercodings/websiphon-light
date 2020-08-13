@@ -1,20 +1,20 @@
 package top.codings.websiphon.light.test;
 
-import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.ApacheRequester;
-import top.codings.websiphon.light.requester.support.BuiltinRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
-import top.codings.websiphon.light.test.dependent.DoNothingRequester;
 import top.codings.websiphon.light.test.dependent.TestResponseHandler;
 
 public class RegressionTesting {
-    @Test
-    public void test1() throws InterruptedException {
+    public static void main(String[] args) throws Exception {
+        test1();
+    }
+
+    public static void test1() throws InterruptedException {
         QpsDataStat stat = new QpsDataStat(0);
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
@@ -28,6 +28,7 @@ public class RegressionTesting {
                         .responseHandlerImplClass(TestResponseHandler.class.getName())
                         .maxNetworkConcurrency(5)
                         .networkErrorStrategy(IRequester.NetworkErrorStrategy.RESPONSE)
+                        .shutdownHook(c -> System.out.println(c.config().getName() + " | 爬虫马上就要关闭啦~~~"))
                         .build())
                 .wrapBy(new StatCrawler<>(stat))
                 .wrapBy(new FakeCrawler())
@@ -35,11 +36,14 @@ public class RegressionTesting {
                 .wrapBy(new RateLimitCrawler(0.95f, (iRequest, c) -> {
                     System.out.println("超时弹出");
                 }));
-        crawler.startup();
-        crawler.push("http://localhost:8080/header");
-        crawler.push("http://localhost:8080/header");
-        while (crawler.isBusy()) {
+        crawler.startup().thenAcceptAsync(c -> {
+            System.out.println("爬虫已启动");
+            c.push("https://www.baidu.com");
+            c.push("http://localhost:8080/header");
+        });
+//        Thread.currentThread().join();
+        /*while (crawler.isBusy()) {
             Thread.onSpinWait();
-        }
+        }*/
     }
 }

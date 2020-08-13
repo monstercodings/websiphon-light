@@ -6,6 +6,7 @@ import top.codings.websiphon.light.function.processor.IProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 
@@ -18,7 +19,7 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
     protected List<Function<IRequest, IRequest>> errors = new CopyOnWriteArrayList<>();
 
     @Override
-    public void startup(ICrawler crawler) {
+    public CompletableFuture<IResponseHandler> startup(ICrawler crawler) {
         IProcessor processor = processorChain();
         successes.add(request -> {
             IRequest.RequestResult result = request.getRequestResult();
@@ -33,7 +34,7 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
 //            log.error("发生异常 -> {}", throwable.getClass());
             return request;
         });
-        super.startup(crawler);
+        return super.startup(crawler);
     }
 
     @Override

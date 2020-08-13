@@ -1,5 +1,6 @@
 package top.codings.websiphon.light.requester.support;
 
+import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
@@ -8,6 +9,7 @@ import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
+import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.SyncRequester;
 
 import java.util.concurrent.*;
@@ -15,6 +17,7 @@ import java.util.function.BiConsumer;
 
 @Slf4j
 public class RateLimitRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
+    private final static String NAME = "并发限制请求器";
     /**
      * 限制内存占用的阈值
      * 设置<=0的话则不做限制
@@ -48,96 +51,105 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     }
 
     @Override
-    public void init() {
-        queue = new LinkedTransferQueue<>();
-        timeoutQueue = new DelayQueue<>();
-        exe = Executors.newFixedThreadPool(2);
-        exe.submit(() -> {
-            // TODO 未来做智能阈值
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    if (limitMemory > 0) {
-                        checkMemory();
-                    }
-                    IRequest request;
-                    // 先阻塞获取任务
-                    request = queue.poll(30, TimeUnit.SECONDS);
-                    if (null == request) {
-                        continue;
-                    }
-                    if (null != token) {
-                        // 获取令牌
-                        token.acquire();
-                    }
-                    // 将标记位恢复
-                    normal = true;
-                    request.setStatus(IRequest.Status.REQUEST);
-                    Inner inner = new Inner(request);
-                    timeoutQueue.offer(inner);
-                    requester.executeAsync(request)
-                            .whenCompleteAsync((aVoid, throwable) -> {
-                                if (timeoutQueue.remove(inner)) {
-                                    if (null != token) {
-                                        token.release();
+    public CompletableFuture<IRequester> init() {
+        CompletableFuture completableFuture = CompletableFuture.supplyAsync(() -> {
+            queue = new LinkedTransferQueue<>();
+            timeoutQueue = new DelayQueue<>();
+            exe = Executors.newFixedThreadPool(2, new DefaultThreadFactory(NAME));
+            exe.submit(() -> {
+                // TODO 未来做智能阈值
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        if (limitMemory > 0) {
+                            checkMemory();
+                        }
+                        IRequest request;
+                        // 先阻塞获取任务
+                        request = queue.poll(30, TimeUnit.SECONDS);
+                        if (null == request) {
+                            continue;
+                        }
+                        if (null != token) {
+                            // 获取令牌
+                            token.acquire();
+                        }
+                        // 将标记位恢复
+                        normal = true;
+                        request.setStatus(IRequest.Status.REQUEST);
+                        Inner inner = new Inner(request);
+                        timeoutQueue.offer(inner);
+                        requester.executeAsync(request)
+                                .whenCompleteAsync((aVoid, throwable) -> {
+                                    if (timeoutQueue.remove(inner)) {
+                                        if (null != token) {
+                                            token.release();
+                                        }
+                                        inner.release();
                                     }
-                                    inner.release();
-                                }
-                                verifyBusy();
-                            })
-                    ;
-                } catch (InterruptedException e) {
-                    return;
-                } catch (Exception e) {
-                    if (null != token) {
-                        token.release();
+                                    verifyBusy();
+                                })
+                        ;
+                    } catch (InterruptedException e) {
+                        break;
+                    } catch (Exception e) {
+                        if (null != token) {
+                            token.release();
+                        }
+                        log.error("获取待处理请求对象失败", e);
                     }
-                    log.error("获取待处理请求对象失败", e);
                 }
-            }
-        });
-        exe.submit(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    Inner inner = timeoutQueue.take();
+                if (log.isDebugEnabled()) {
+                    log.debug("消费请求任务线程停止运行");
+                }
+            });
+            exe.submit(() -> {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        Inner inner = timeoutQueue.take();
                     /*String url = "";
                     if (inner.request instanceof BuiltinRequest) {
                         url = ((HttpRequest) inner.request.getHttpRequest()).uri().toString();
                     } else if (inner.request instanceof ApacheRequest) {
                         url = ((ApacheRequest) inner.request).getHttpRequest().getURI().toString();
                     }*/
-                    if (null != token) {
-                        // 先进行令牌的释放，帮助后续网络请求能更快的发送
-                        token.release();
-                    }
-                    inner.request.lock();
-                    try {
-                        IRequest.Status status = inner.request.getStatus();
-                        switch (status) {
-                            case WAIT, READY, REQUEST -> {
-                                if (null != timeoutHandler) {
-                                    try {
-                                        timeoutHandler.accept(inner.request, crawler.wrapper());
-                                    } catch (Exception e) {
-                                        log.error("请求对象超时处理失败", e);
-                                    }
-                                }
-//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
-                                inner.request.setStatus(IRequest.Status.TIMEOUT);
-//                                inner.request.release();
-                            }
+                        if (null != token) {
+                            // 先进行令牌的释放，帮助后续网络请求能更快的发送
+                            token.release();
                         }
-                    } finally {
-                        inner.request.unlock();
+                        inner.request.lock();
+                        try {
+                            IRequest.Status status = inner.request.getStatus();
+                            switch (status) {
+                                case WAIT, READY, REQUEST -> {
+                                    if (null != timeoutHandler) {
+                                        try {
+                                            timeoutHandler.accept(inner.request, crawler.wrapper());
+                                        } catch (Exception e) {
+                                            log.error("请求对象超时处理失败", e);
+                                        }
+                                    }
+//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
+                                    inner.request.setStatus(IRequest.Status.TIMEOUT);
+//                                inner.request.release();
+                                }
+                            }
+                        } finally {
+                            inner.request.unlock();
+                        }
+                        verifyBusy();
+                    } catch (InterruptedException e) {
+                        break;
+                    } catch (Exception e) {
+                        log.error("请求对象超时检查失败", e);
                     }
-                    verifyBusy();
-                } catch (InterruptedException e) {
-                    return;
-                } catch (Exception e) {
-                    log.error("请求对象超时检查失败", e);
                 }
-            }
+                if (log.isDebugEnabled()) {
+                    log.debug("监测请求任务超时线程停止运行");
+                }
+            });
+            return this;
         });
-        super.init();
+        return completableFuture.thenCombineAsync(super.init(), (o, o2) -> o2);
     }
 
     private void verifyBusy() {
@@ -153,21 +165,28 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     @Override
     public CompletableFuture<IRequest> executeAsync(IRequest request) {
         normal = false;
-        request.setStatus(IRequest.Status.WAIT);
-        queue.offer(request);
-        return CompletableFuture.completedFuture(request);
+        request.setStatus(IRequest.Status.READY);
+        return CompletableFuture.supplyAsync(() -> {
+            request.setStatus(IRequest.Status.WAIT);
+            queue.offer(request);
+            return request;
+        });
     }
 
     @Override
-    public void shutdown(boolean force) {
+    public CompletableFuture<IRequester> shutdown(boolean force) {
         if (null != exe) {
             if (force) exe.shutdownNow();
             else exe.shutdown();
+            try {
+                exe.awaitTermination(1, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+            }
         }
         if (null != queue) {
             queue.clear();
         }
-        requester.shutdown(force);
+        return super.shutdown(force);
     }
 
     @Override

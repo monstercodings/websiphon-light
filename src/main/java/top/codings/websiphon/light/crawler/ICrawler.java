@@ -1,17 +1,20 @@
 package top.codings.websiphon.light.crawler;
 
+import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.requester.IRequest;
+
+import java.util.concurrent.CompletableFuture;
 
 public interface ICrawler {
     /**
      * 启动爬虫
      */
-    void startup();
+    CompletableFuture<ICrawler> startup();
 
     /**
      * 关闭爬虫
      */
-    void shutdown();
+    CompletableFuture<ICrawler> shutdown();
 
     /**
      * 将任务推送给爬虫
@@ -30,4 +33,6 @@ public interface ICrawler {
      * @return
      */
     boolean isBusy();
+
+    CrawlerConfig config();
 }

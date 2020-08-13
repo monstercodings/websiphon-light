@@ -57,7 +57,7 @@ public class DistinctRequester extends CombineRequester<IRequest> implements Asy
         if (StringUtils.isNotBlank(url) && filter.put(url)) {
             return requester.executeAsync(request);
         }
-        return CompletableFuture.completedFuture(request);
+        return CompletableFuture.supplyAsync(() -> request);
     }
 
     @Override

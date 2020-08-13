@@ -3,7 +3,10 @@ package top.codings.websiphon.light.config;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequester;
+
+import java.util.function.Consumer;
 
 @Getter
 @Builder
@@ -45,4 +48,8 @@ public class CrawlerConfig {
      * 网络异常时的请求对象的处理策略
      */
     private IRequester.NetworkErrorStrategy networkErrorStrategy;
+    /**
+     * 爬虫关闭前的回调函数
+     */
+    private Consumer<ICrawler> shutdownHook;
 }

@@ -64,6 +64,6 @@ public class TestResponseHandler extends StatResponseHandler {
         } finally {
             lock.unlock();
         }
-        crawler.shutdown();
+        crawler.shutdown().thenRunAsync(() -> System.out.println(Thread.currentThread().getName() + " | 也不知道能不能执行到这儿?"));
     }
 }

@@ -11,7 +11,7 @@ public interface IRequester<T extends IRequest> {
     /**
      * 初始化请求器
      */
-    void init();
+    CompletableFuture<IRequester> init();
 
     /**
      * 发起异步网络请求
@@ -30,7 +30,7 @@ public interface IRequester<T extends IRequest> {
      *
      * @param force
      */
-    void shutdown(boolean force);
+    CompletableFuture<IRequester> shutdown(boolean force);
 
     /**
      * 查看请求器是否繁忙
