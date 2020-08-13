@@ -1,5 +1,6 @@
 package top.codings.websiphon.light.test.dependent;
 
+import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.FilterableCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
@@ -11,13 +12,14 @@ import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+@Slf4j
 public class TestResponseHandler extends StatResponseHandler {
     @Override
     protected IProcessor processorChain() {
         return new AbstractProcessor<String>() {
             @Override
             protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
-                System.out.println("响应内容如下:\n" + (data.length() > 120 ? data.substring(0, 120) : data));
+                log.debug("响应内容:{}", (data.length() > 20 ? data.substring(0, 20) : data));
                 return data;
             }
         }.next(new JSONProcessor());
@@ -46,7 +48,7 @@ public class TestResponseHandler extends StatResponseHandler {
 
     @Override
     protected void handleError(IRequest request, Throwable throwable, ICrawler crawler) {
-        System.err.println("发生异常 -> " + throwable.getClass().getName());
+        log.error("发生异常 -> {}", throwable.getClass().getName());
     }
 
     ReentrantLock lock = new ReentrantLock();
@@ -58,7 +60,7 @@ public class TestResponseHandler extends StatResponseHandler {
         }
         try {
             ((CombineCrawler) crawler).find(FilterableCrawler.class).ifPresent(FilterableCrawler::clear);
-            System.out.println(Thread.currentThread().getName() + ": 任务已全部完成");
+            log.debug("任务已全部完成");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {

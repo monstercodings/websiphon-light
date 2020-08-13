@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class NettyRequester extends CombineRequester<NettyRequest> implements AsyncRequester<NettyRequest> {
+    private Bootstrap bootstrap;
     private NioEventLoopGroup workerGroup;
     private SSLContext sslContext;
     @Setter
@@ -54,20 +55,8 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
 
     @Override
     public CompletableFuture<IRequester> init() {
+        bootstrap = new Bootstrap();
         workerGroup = new NioEventLoopGroup();
-        try {
-            sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(new FrameworkException("初始化SSL套件失败", e));
-        }
-        return CompletableFuture.completedFuture(this);
-    }
-
-    @Override
-    public CompletableFuture<NettyRequest> executeAsync(final NettyRequest request) {
-        CompletableFuture<NettyRequest> cf = new CompletableFuture();
-
-        Bootstrap bootstrap = new Bootstrap();
         bootstrap
                 .group(workerGroup)
                 .channel(NioSocketChannel.class)
@@ -77,7 +66,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
-                        socketChannel.closeFuture().addListener((ChannelFutureListener) channelFuture -> {
+                        /*socketChannel.closeFuture().addListener((ChannelFutureListener) channelFuture -> {
                             request.lock();
                             try {
                                 cf.completeAsync(() -> request);
@@ -198,18 +187,23 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                             request.unlock();
                                             ctx.close();
                                         }
-                                        /*if (cause instanceof TooLongFrameException) {
-                                            System.err.println("内容太长无法请求成功");
-                                            ctx.close();
-                                            return;
-                                        }
-                                        super.exceptionCaught(ctx, cause);*/
                                     }
                                 })
-                        ;
+                        ;*/
                     }
                 })
         ;
+        try {
+            sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(new FrameworkException("初始化SSL套件失败", e));
+        }
+        return CompletableFuture.completedFuture(this);
+    }
+
+    @Override
+    public CompletableFuture<NettyRequest> executeAsync(final NettyRequest request) {
+        CompletableFuture<NettyRequest> cf = new CompletableFuture();
         URI uri = request.getUri();
         String scheme = uri.getScheme();
         String host = uri.getHost();
@@ -223,7 +217,137 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
         }
         int finalPort = port;
         bootstrap.connect(host, port).addListener((ChannelFutureListener) channelFuture -> {
+            channelFuture.channel().closeFuture().addListener((ChannelFutureListener) inChannelFuture -> {
+                request.lock();
+                try {
+                    cf.completeAsync(() -> request);
+                } finally {
+                    request.unlock();
+                }
+            });
             if (channelFuture.isSuccess()) {
+                channelFuture.channel().pipeline()
+                        .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, 6, TimeUnit.SECONDS) {
+                            @Override
+                            protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
+                                request.lock();
+                                try {
+                                    if (null != request.requestResult) {
+                                        return;
+                                    }
+                                    request.requestResult = new IRequest.RequestResult();
+                                    request.requestResult.setThrowable(new RuntimeException("网络传输超时"));
+                                    request.requestResult.setSucceed(false);
+                                } finally {
+                                    request.unlock();
+                                    ctx.close();
+                                }
+                            }
+                        })
+                        .addLast(new HttpClientCodec())
+                        .addLast(new HttpContentDecompressor())
+                        .addLast(new HttpObjectAggregator(1024 * 512))
+                        .addLast(new SimpleChannelInboundHandler<HttpResponse>() {
+                            @Override
+                            protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpResponse httpResponse) throws Exception {
+                                request.lock();
+                                try {
+                                    if (null != request.requestResult) {
+                                        return;
+                                    }
+                                    request.setStatus(IRequest.Status.RESPONSE);
+                                    request.requestResult = new IRequest.RequestResult();
+                                    if (!httpResponse.decoderResult().isSuccess()) {
+                                        request.requestResult.setSucceed(false);
+                                        request.requestResult.setThrowable(new RuntimeException("响应解析失败"));
+                                        responseHandler.handle(request);
+                                        return;
+                                    }
+                                    int code = httpResponse.status().code();
+                                    request.requestResult.setCode(code);
+                                    if (code < 200 || code >= 300) {
+                                        request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
+                                        responseHandler.handle(request);
+                                        return;
+                                    }
+                                    String contentTypeStr = httpResponse.headers().get("content-type");
+                                    byte[] body;
+                                    if (httpResponse instanceof FullHttpResponse) {
+                                        FullHttpResponse response = (FullHttpResponse) httpResponse;
+                                        body = ByteBufUtil.getBytes(response.content());
+                                    } else {
+                                        log.warn("响应类型尚未有处理方案 -> %s", httpResponse.getClass().getName());
+                                        request.requestResult.setSucceed(false);
+                                        request.requestResult.setThrowable(new RuntimeException("响应类型不匹配"));
+                                        return;
+                                    }
+                                    Charset charset;
+                                    String mimeType;
+                                    ContentType contentType;
+                                    if (StringUtils.isNotBlank(contentTypeStr)) {
+                                        contentType = ContentType.parse(contentTypeStr);
+                                        mimeType = contentType.getMimeType();
+                                        charset = contentType.getCharset();
+                                    } else {
+                                        charset = HttpCharsetUtil.findCharset(body);
+                                        mimeType = "text/html";
+                                    }
+                                    if ((mimeType.contains("text") || mimeType.contains("json")) && charset == null) {
+                                        channelHandlerContext.close();
+                                        request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
+                                        responseHandler.handle(request);
+                                        return;
+                                    }
+                                    if (mimeType.contains("text")) {
+                                        // 文本解析
+                                        request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
+                                        request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
+                                    } else if (mimeType.contains("json")) {
+                                        // JSON解析
+                                        request.requestResult.setResponseType(IRequest.ResponseType.JSON);
+                                        request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
+                                    } else {
+                                        // 字节解析
+                                        request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
+                                        request.requestResult.setData(body);
+                                    }
+                                    responseHandler.handle(request);
+                                } catch (Exception e) {
+                                    request.requestResult.setSucceed(false);
+                                    request.requestResult.setThrowable(e);
+                                } finally {
+                                    request.unlock();
+                                    channelHandlerContext.close();
+                                }
+                            }
+
+                            @Override
+                            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                                request.lock();
+                                try {
+                                    if (null != request.requestResult) {
+                                        return;
+                                    }
+                                    request.setStatus(IRequest.Status.ERROR);
+                                    request.requestResult = new IRequest.RequestResult();
+                                    request.requestResult.setThrowable(cause);
+                                    request.requestResult.setSucceed(false);
+                                    if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
+                                        responseHandler.handle(request);
+                                    }
+                                } finally {
+                                    request.unlock();
+                                    ctx.close();
+                                }
+                                        /*if (cause instanceof TooLongFrameException) {
+                                            System.err.println("内容太长无法请求成功");
+                                            ctx.close();
+                                            return;
+                                        }
+                                        super.exceptionCaught(ctx, cause);*/
+                            }
+                        })
+                ;
                 if (scheme.equalsIgnoreCase("https")) {
                     InetSocketAddress address = (InetSocketAddress) channelFuture.channel().remoteAddress();
                     SSLEngine sslEngine = sslContext.createSSLEngine(address.getHostString(), address.getPort());

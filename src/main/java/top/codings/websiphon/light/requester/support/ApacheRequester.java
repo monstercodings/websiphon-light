@@ -17,6 +17,7 @@ import org.apache.http.client.entity.InputStreamFactory;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
@@ -200,66 +201,70 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> implements 
         @Override
         public void completed(HttpResponse result) {
             verifyStatus(obj -> {
-                byte[] body = EntityUtils.toByteArray(result.getEntity());
-                final Header ceheader = result.getEntity().getContentEncoding();
-                if (ceheader != null) {
-                    final HeaderElement[] codecs = ceheader.getElements();
-                    for (final HeaderElement codec : codecs) {
-                        final String codecname = codec.getName().toLowerCase(Locale.ROOT);
-                        final InputStreamFactory decoderFactory = decoderRegistry.lookup(codecname);
-                        if (decoderFactory != null) {
-                            try (InputStream is = decoderFactory.create(new ByteArrayInputStream(body))) {
-                                body = IOUtils.toByteArray(is);
+                try {
+                    byte[] body = EntityUtils.toByteArray(result.getEntity());
+                    final Header ceheader = result.getEntity().getContentEncoding();
+                    if (ceheader != null) {
+                        final HeaderElement[] codecs = ceheader.getElements();
+                        for (final HeaderElement codec : codecs) {
+                            final String codecname = codec.getName().toLowerCase(Locale.ROOT);
+                            final InputStreamFactory decoderFactory = decoderRegistry.lookup(codecname);
+                            if (decoderFactory != null) {
+                                try (InputStream is = decoderFactory.create(new ByteArrayInputStream(body))) {
+                                    body = IOUtils.toByteArray(is);
+                                }
                             }
                         }
                     }
-                }
-                request.requestResult.setCode(result.getStatusLine().getStatusCode());
-                request.requestResult.setSucceed(true);
-                String mimeType = "text/html";
-                Charset charset = null;
-                Header ct = result.getFirstHeader("content-type");
-                String contentType;
-                if (ct != null) {
-                    contentType = ct.getValue();
-                    Matcher matcher = pattern.matcher(contentType);
-                    if (matcher.find()) {
-                        mimeType = matcher.group(1);
-                        if (StringUtils.isBlank(mimeType)) {
+                    request.requestResult.setCode(result.getStatusLine().getStatusCode());
+                    request.requestResult.setSucceed(true);
+                    String mimeType = "text/html";
+                    Charset charset = null;
+                    Header ct = result.getFirstHeader("content-type");
+                    String contentType;
+                    if (ct != null) {
+                        contentType = ct.getValue();
+                        Matcher matcher = pattern.matcher(contentType);
+                        if (matcher.find()) {
+                            mimeType = matcher.group(1);
+                            if (StringUtils.isBlank(mimeType)) {
+                                mimeType = "text/html";
+                            }
+                            String charsetStr = matcher.group(3);
+                            if (StringUtils.isNotBlank(charsetStr)) {
+                                if (charsetStr.contains(",")) {
+                                    charsetStr = charsetStr.split(",")[0];
+                                }
+                                charset = CharsetUtils.lookup(charsetStr);
+                            }
+                        } else {
+                            log.trace("无字符编码类型[{}] -> {}", contentType, request.getHttpRequest().getURI().toString());
                             mimeType = "text/html";
                         }
-                        String charsetStr = matcher.group(3);
-                        if (StringUtils.isNotBlank(charsetStr)) {
-                            if (charsetStr.contains(",")) {
-                                charsetStr = charsetStr.split(",")[0];
-                            }
-                            charset = CharsetUtils.lookup(charsetStr);
-                        }
-                    } else {
-                        log.trace("无字符编码类型[{}] -> {}", contentType, request.getHttpRequest().getURI().toString());
-                        mimeType = "text/html";
                     }
-                }
-                if (null == charset) {
-                    charset = HttpCharsetUtil.findCharset(body);
                     if (null == charset) {
-                        charset = Charset.defaultCharset();
+                        charset = HttpCharsetUtil.findCharset(body);
+                        if (null == charset) {
+                            charset = Charset.defaultCharset();
+                        }
                     }
+                    if (mimeType.contains("text")) {
+                        // 文本解析
+                        request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
+                        request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
+                    } else if (mimeType.contains("json")) {
+                        // JSON解析
+                        request.requestResult.setResponseType(IRequest.ResponseType.JSON);
+                        request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
+                    } else {
+                        // 字节解析
+                        request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
+                        request.requestResult.setData(body);
+                    }
+                    responseHandler.handle(request);
+                } finally {
+                    HttpClientUtils.closeQuietly(result);
                 }
-                if (mimeType.contains("text")) {
-                    // 文本解析
-                    request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
-                    request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
-                } else if (mimeType.contains("json")) {
-                    // JSON解析
-                    request.requestResult.setResponseType(IRequest.ResponseType.JSON);
-                    request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
-                } else {
-                    // 字节解析
-                    request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
-                    request.requestResult.setData(body);
-                }
-                responseHandler.handle(request);
             });
 
             /*request.setStatus(IRequest.Status.RESPONSE);

@@ -1,6 +1,7 @@
 package top.codings.websiphon.light.test;
 
 import com.sun.net.httpserver.HttpServer;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
@@ -16,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Slf4j
 public class TestTotal {
     private static AtomicBoolean keep = new AtomicBoolean(true);
 
@@ -25,7 +27,7 @@ public class TestTotal {
 
 //        test.createHttpServer();
         while (keep.get()) {
-            for (int i = 0; i < 1; i++) {
+            for (int i = 0; i < 30; i++) {
                 /*IRequest request = new BuiltinRequest(HttpRequest.newBuilder()
                         .uri(URI.create("http://192.168.1.117:8080/test"))
                         .build());*/
@@ -34,7 +36,7 @@ public class TestTotal {
                         .build()));*/
 //                crawler.push(new ApacheRequest(new HttpGet("http://192.168.0.113:8080/test")));
 //                crawler.push(new ApacheRequest(new HttpGet("https://www.baidu.com")));
-                crawler.push("https://www.baidu.com?a=1");
+                crawler.push("https://www.baidu.com/?a=" + i);
             }
             break;
         }
@@ -82,6 +84,7 @@ public class TestTotal {
 //                        .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
 //                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheRequester")
                         .requesterClass("top.codings.websiphon.light.requester.support.NettyRequester")
+                        .shutdownHook(spider -> log.debug("[{}] 爬虫关闭", spider.config().getName()))
                         .build())
                 .wrapBy(new StatCrawler<>(stat, true))
                 .wrapBy(new FakeCrawler())
