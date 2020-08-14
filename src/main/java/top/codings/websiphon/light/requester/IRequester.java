@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.requester.support.CombineRequester;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -87,6 +88,9 @@ public interface IRequester<T extends IRequest> {
                         true,
                         config.getClassLoader() == null ? ClassLoader.getSystemClassLoader() : config.getClassLoader()
                 ).getConstructor().newInstance();
+                if ((requester instanceof CombineRequester) && config.getNetworkErrorStrategy() != null) {
+                    ((CombineRequester) requester).setStrategy(config.getNetworkErrorStrategy());
+                }
             } catch (Exception e) {
                 throw new FrameworkException("初始化请求器失败", e);
             }

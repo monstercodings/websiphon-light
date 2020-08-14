@@ -49,9 +49,6 @@ public class BaseCrawler extends CombineCrawler {
                     .newBuilder(config)
                     .responseHandler(responseHandler)
                     .build();
-            if (config.getNetworkErrorStrategy() != null) {
-                combineRequester.setStrategy(config.getNetworkErrorStrategy());
-            }
             setRequester(combineRequester);
         }
     }
