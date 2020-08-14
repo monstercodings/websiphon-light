@@ -1,5 +1,6 @@
 package top.codings.websiphon.light.utils;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -20,6 +21,7 @@ public class CompilerUtil {
     private static final JavaCompiler JAVA_COMPILER = ToolProvider.getSystemJavaCompiler();
     private static final StandardJavaFileManager STANDARD_JAVA_FILE_MANAGER = JAVA_COMPILER.getStandardFileManager(null, null, null);
     private static URL[] urls;
+    @Getter
     private static URLClassLoader classLoader;
 
 
