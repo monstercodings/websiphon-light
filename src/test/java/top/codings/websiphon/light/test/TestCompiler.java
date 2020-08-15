@@ -2,10 +2,11 @@ package top.codings.websiphon.light.test;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.WebsiphonClassLoader;
-import top.codings.websiphon.light.utils.CompilerUtil;
 
+import java.io.File;
 import java.lang.reflect.Method;
 
 @Slf4j
@@ -14,7 +15,20 @@ public class TestCompiler {
     @Test
     public void test() {
         long start = System.currentTimeMillis();
-        Class clazz = CompilerUtil.loadClass("my.response.handler.MyResponseHandler");
+        /*CompilerUtil.compiler("my.response.handler.MyResponseHandler").then(new Consumer<TaskResult>() {
+            @Override
+            public void accept(TaskResult taskResult) {
+                log.debug("编译结果- > {}", taskResult.isSucceed());
+            }
+        });*/
+        WebsiphonClassLoader loader = new WebsiphonClassLoader();
+        loader.loadClassFromByte("my.response.handler.MyResponseHandler",
+                FileUtils.readFileToByteArray(
+                        new File("config/compiler/my/response/handler/MyResponseHandler.class")));
+        loader.loadClassFromByte("my.response.handler.MyResponseHandler$1",
+                FileUtils.readFileToByteArray(
+                        new File("config/compiler/my/response/handler/MyResponseHandler$1.class")));
+        Class clazz = loader.loadClass("my.response.handler.MyResponseHandler");
         long end = System.currentTimeMillis();
         log.debug("加载耗时 -> {}ms", end - start);
         Method method = clazz.getDeclaredMethod("processorChain");

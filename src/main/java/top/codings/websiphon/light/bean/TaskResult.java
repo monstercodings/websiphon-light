@@ -2,6 +2,8 @@ package top.codings.websiphon.light.bean;
 
 import lombok.Getter;
 
+import java.util.function.Consumer;
+
 public class TaskResult<T> {
     @Getter
     private boolean succeed;
@@ -17,5 +19,12 @@ public class TaskResult<T> {
         this.succeed = succeed;
         this.throwable = throwable;
         this.data = data;
+    }
+
+    public TaskResult<T> then(Consumer<TaskResult<T>> consumer) {
+        if (consumer != null) {
+            consumer.accept(this);
+        }
+        return this;
     }
 }

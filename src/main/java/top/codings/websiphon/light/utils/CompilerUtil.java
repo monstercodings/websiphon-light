@@ -1,6 +1,5 @@
 package top.codings.websiphon.light.utils;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -25,8 +24,8 @@ public class CompilerUtil {
     private static final JavaCompiler JAVA_COMPILER = ToolProvider.getSystemJavaCompiler();
     private static final StandardJavaFileManager STANDARD_JAVA_FILE_MANAGER = JAVA_COMPILER.getStandardFileManager(null, null, null);
     private static URL[] urls;
-    @Getter
-    private volatile static WebsiphonClassLoader classLoader;
+//    @Getter
+//    private volatile static WebsiphonClassLoader classLoader;
 
 
     static {
@@ -35,13 +34,13 @@ public class CompilerUtil {
             FileUtils.forceMkdirParent(file);
             urls = new URL[]{
                     new URL("file://".concat(BASE_PATH))};
-            classLoader = new WebsiphonClassLoader(urls);
+//            classLoader = new WebsiphonClassLoader(urls);
         } catch (Exception e) {
             log.error("初始化本地Class的URL失败", e);
         }
     }
 
-    public final static Class loadClass(String className) throws FrameworkException {
+    /*public final static Class loadClass(String className) throws FrameworkException {
         try {
             return classLoader.loadClass(className);
         } catch (ClassNotFoundException e) {
@@ -51,9 +50,9 @@ public class CompilerUtil {
             }
             return result.getData();
         }
-    }
+    }*/
 
-    public final static TaskResult<Class> compiler(String className) {
+    public final static TaskResult compiler(String className) {
         if (StringUtils.isBlank(className)) {
             TaskResult<Class> result = new TaskResult<>(false,
                     new IllegalArgumentException("全限定类名不能为空"),
@@ -64,7 +63,7 @@ public class CompilerUtil {
         return compiler(new File(COMPILER_PATH + path), className);
     }
 
-    private static final TaskResult<Class> compiler(File file, String className) {
+    private static final TaskResult compiler(File file, String className) {
         Iterable<? extends JavaFileObject> javaFileObjects = STANDARD_JAVA_FILE_MANAGER.getJavaFileObjects(file);
         JavaCompiler.CompilationTask task = JAVA_COMPILER.getTask(null, STANDARD_JAVA_FILE_MANAGER,
                 null, Arrays.asList(
@@ -79,24 +78,14 @@ public class CompilerUtil {
             );
             return result;
         }
-        try {
+        return new TaskResult<>(true, null, null);
+        /*try {
             Class clazz = classLoader.loadClass(className);
             TaskResult<Class> result = new TaskResult<>(true, null, clazz);
             return result;
         } catch (Exception e) {
             TaskResult<Class> result = new TaskResult<>(false, e, null);
             return result;
-        }
-    }
-
-    public static void restartCL() {
-        if (null != classLoader) {
-            try {
-                classLoader.close();
-            } catch (IOException e) {
-                log.error("关闭类加载器失败", e);
-            }
-            classLoader = new WebsiphonClassLoader(urls);
-        }
+        }*/
     }
 }
