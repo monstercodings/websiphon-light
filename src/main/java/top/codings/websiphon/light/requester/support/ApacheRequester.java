@@ -261,7 +261,9 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                         request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
                         request.requestResult.setData(body);
                     }
-                    responseHandler.handle(request);
+                    if (null != responseHandler) {
+                        responseHandler.handle(request);
+                    }
                 } finally {
                     HttpClientUtils.closeQuietly(result);
                 }
@@ -345,7 +347,9 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                 if (getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
                     return;
                 }
-                responseHandler.handle(request);
+                if (null != responseHandler) {
+                    responseHandler.handle(request);
+                }
             });
         }
 
@@ -357,7 +361,9 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                 if (getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
                     return;
                 }
-                responseHandler.handle(request);
+                if (null != responseHandler) {
+                    responseHandler.handle(request);
+                }
             });
         }
     }

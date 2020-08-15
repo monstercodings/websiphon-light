@@ -42,6 +42,8 @@ public class BaseCrawler extends CombineCrawler {
             } catch (Exception e) {
                 throw new RuntimeException("初始化响应处理器失败", e);
             }
+        }
+        if (null != responseHandler) {
             responseHandler.setConfig(config);
         }
         this.responseHandler = responseHandler;

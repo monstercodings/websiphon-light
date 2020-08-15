@@ -99,7 +99,9 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
                             if (throwable != null && getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
                                 return;
                             }
-                            responseHandler.handle(request);
+                            if (null != responseHandler) {
+                                responseHandler.handle(request);
+                            }
                         } finally {
                             request.unlock();
                         }

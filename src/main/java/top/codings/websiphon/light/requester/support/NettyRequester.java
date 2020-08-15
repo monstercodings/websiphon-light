@@ -259,14 +259,18 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                     if (!httpResponse.decoderResult().isSuccess()) {
                                         request.requestResult.setSucceed(false);
                                         request.requestResult.setThrowable(new RuntimeException("响应解析失败"));
-                                        responseHandler.handle(request);
+                                        if (null != responseHandler) {
+                                            responseHandler.handle(request);
+                                        }
                                         return;
                                     }
                                     int code = httpResponse.status().code();
                                     request.requestResult.setCode(code);
                                     if (code < 200 || code >= 300) {
                                         request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
-                                        responseHandler.handle(request);
+                                        if (null != responseHandler) {
+                                            responseHandler.handle(request);
+                                        }
                                         return;
                                     }
                                     String contentTypeStr = httpResponse.headers().get("content-type");
@@ -292,9 +296,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                         mimeType = "text/html";
                                     }
                                     if ((mimeType.contains("text") || mimeType.contains("json")) && charset == null) {
-                                        channelHandlerContext.close();
                                         request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
-                                        responseHandler.handle(request);
+                                        if (null != responseHandler) {
+                                            responseHandler.handle(request);
+                                        }
                                         return;
                                     }
                                     if (mimeType.contains("text")) {
@@ -310,7 +315,9 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                         request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
                                         request.requestResult.setData(body);
                                     }
-                                    responseHandler.handle(request);
+                                    if (null != responseHandler) {
+                                        responseHandler.handle(request);
+                                    }
                                 } catch (Exception e) {
                                     request.requestResult.setSucceed(false);
                                     request.requestResult.setThrowable(e);
@@ -331,7 +338,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                     request.requestResult = new IRequest.RequestResult();
                                     request.requestResult.setThrowable(cause);
                                     request.requestResult.setSucceed(false);
-                                    if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
+                                    if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE && null != responseHandler) {
                                         responseHandler.handle(request);
                                     }
                                 } finally {
@@ -388,7 +395,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         request.requestResult = new IRequest.RequestResult();
         request.requestResult.setSucceed(false);
         request.requestResult.setThrowable(future.cause());
-        if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
+        if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE && null != responseHandler) {
             responseHandler.handle(request);
         }
         future.channel().close();
