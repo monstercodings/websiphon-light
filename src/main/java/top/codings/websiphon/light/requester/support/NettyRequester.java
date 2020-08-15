@@ -284,7 +284,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                         request.requestResult.setThrowable(new RuntimeException("响应类型不匹配"));
                                         return;
                                     }
-                                    Charset charset;
+                                    Charset charset = null;
                                     String mimeType;
                                     ContentType contentType;
                                     if (StringUtils.isNotBlank(contentTypeStr)) {
@@ -292,8 +292,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                         mimeType = contentType.getMimeType();
                                         charset = contentType.getCharset();
                                     } else {
-                                        charset = HttpCharsetUtil.findCharset(body);
                                         mimeType = "text/html";
+                                    }
+                                    if (charset == null) {
+                                        charset = HttpCharsetUtil.findCharset(body);
                                     }
                                     if ((mimeType.contains("text") || mimeType.contains("json")) && charset == null) {
                                         request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
