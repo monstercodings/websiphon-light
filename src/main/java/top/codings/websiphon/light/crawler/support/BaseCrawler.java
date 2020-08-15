@@ -1,6 +1,7 @@
 package top.codings.websiphon.light.crawler.support;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
@@ -30,7 +31,7 @@ public class BaseCrawler extends CombineCrawler {
             config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors() + 1);
         }
         this.config = config;
-        if (null == responseHandler) {
+        if (null == responseHandler && StringUtils.isNotBlank(config.getResponseHandlerImplClass())) {
             try {
                 // 初始化响应处理器
                 responseHandler = (IResponseHandler) Class.forName(
