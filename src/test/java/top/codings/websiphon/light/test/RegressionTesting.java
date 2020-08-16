@@ -34,7 +34,7 @@ public class RegressionTesting {
                 .wrapBy(new RateLimitCrawler(0.95f, (iRequest, c) -> System.out.println("超时弹出")));
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
-            c.push("https://www.baidu.com");
+            c.push("https://www.baidu.com/ppp?a=11");
 //            c.push("http://localhost:8080/header");
         });
 //        Thread.currentThread().join();

@@ -415,6 +415,9 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         if (StringUtils.isBlank(path)) {
             path = "/";
         }
+        if (StringUtils.isNotBlank(uri.getQuery())) {
+            path = path.concat("?").concat(uri.getQuery());
+        }
         HttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path, Unpooled.EMPTY_BUFFER);
         NettyRequest request = new NettyRequest(httpRequest, userData);
         request.setUri(uri);
