@@ -427,11 +427,15 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     @Override
     public CompletableFuture<IRequester> shutdown(boolean force) {
         CompletableFuture completableFuture = new CompletableFuture();
-        workerGroup.shutdownGracefully().addListener((GenericFutureListener<Future<? super Object>>) future -> {
-            sslContext = null;
-            workerGroup = null;
-            completableFuture.completeAsync(() -> this);
-        });
+        if (workerGroup != null) {
+            workerGroup.shutdownGracefully().addListener((GenericFutureListener<Future<? super Object>>) future -> {
+                sslContext = null;
+                workerGroup = null;
+                completableFuture.completeAsync(() -> this);
+            });
+        } else {
+            completableFuture.complete(this);
+        }
         return completableFuture;
     }
 }
