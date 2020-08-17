@@ -34,5 +34,9 @@ public interface ICrawler {
      */
     boolean isBusy();
 
+    boolean isStop();
+
+    boolean isRunning();
+
     CrawlerConfig config();
 }

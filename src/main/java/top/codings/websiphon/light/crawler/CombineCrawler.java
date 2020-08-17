@@ -61,6 +61,18 @@ public abstract class CombineCrawler implements ICrawler {
     }
 
     @Override
+    public boolean isStop() {
+        if (next != null) return next.isStop();
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
+    public boolean isRunning() {
+        if (next != null) return next.isRunning();
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
     public CrawlerConfig config() {
         return config;
     }

@@ -268,6 +268,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                     request.requestResult.setCode(code);
                                     if (code < 200 || code >= 300) {
                                         request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
+                                        request.requestResult.setData("");
                                         if (null != responseHandler) {
                                             responseHandler.handle(request);
                                         }
