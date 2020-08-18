@@ -24,9 +24,9 @@ public class WebsiphonClassLoader extends ClassLoader {
 
     public Class<?> loadClass(String name, String version) {
         try {
-            return findClass(name);
+            return loadClass(name);
         } catch (ClassNotFoundException e) {
-            return loadClassFromByte(name, classAndJarCache.loadClassByte(name, version));
+            return loadClassFromByte(name, classAndJarCache.loadClassByte(name, version), true);
         }
     }
 
@@ -39,8 +39,17 @@ public class WebsiphonClassLoader extends ClassLoader {
     }
 
     public Class<?> loadClassFromByte(String name, byte[] bytes) {
+        return loadClassFromByte(name, bytes, false);
+    }
+
+    public Class<?> loadClassFromByte(String name, byte[] bytes, boolean direct) {
+        if (direct) {
+            Class<?> clazz = defineClass(name, bytes, 0, bytes.length);
+            cacheClass.put(name, clazz);
+            return clazz;
+        }
         try {
-            return findClass(name);
+            return loadClass(name);
         } catch (ClassNotFoundException e) {
             Class<?> clazz = defineClass(name, bytes, 0, bytes.length);
             cacheClass.put(name, clazz);

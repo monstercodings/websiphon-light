@@ -17,9 +17,7 @@ import java.util.jar.JarFile;
 public class ClassAndJarCache {
     @Getter
     private String basePath;
-    @Getter
     private Map<String, Map<String, String>> class2Jar = new ConcurrentHashMap<>();
-    @Getter
     private Map<String, Map<String, String>> class2Path = new ConcurrentHashMap<>();
 
     public ClassAndJarCache(String basePath) {
