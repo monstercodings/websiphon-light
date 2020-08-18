@@ -4,29 +4,29 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WebsiphonClassLoader extends ClassLoader {
-    private JarCache jarCache;
+    private ClassAndJarCache classAndJarCache;
     private Map<String, Class<?>> cacheClass = new ConcurrentHashMap<>();
 
     public WebsiphonClassLoader(String basePath) {
         this(basePath, null);
     }
 
-    public WebsiphonClassLoader(JarCache jarCache) {
-        this(null, jarCache);
+    public WebsiphonClassLoader(ClassAndJarCache classAndJarCache) {
+        this(null, classAndJarCache);
     }
 
-    public WebsiphonClassLoader(String basePath, JarCache jarCache) {
-        if (null == jarCache) {
-            jarCache = new JarCache(basePath);
+    public WebsiphonClassLoader(String basePath, ClassAndJarCache classAndJarCache) {
+        if (null == classAndJarCache) {
+            classAndJarCache = new ClassAndJarCache(basePath);
         }
-        this.jarCache = jarCache;
+        this.classAndJarCache = classAndJarCache;
     }
 
     public Class<?> loadClass(String name, String version) {
         try {
             return findClass(name);
         } catch (ClassNotFoundException e) {
-            return loadClassFromByte(name, jarCache.loadClassByte(name, version));
+            return loadClassFromByte(name, classAndJarCache.loadClassByte(name, version));
         }
     }
 

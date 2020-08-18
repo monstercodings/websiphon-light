@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-public class JarCache {
+public class ClassAndJarCache {
     @Getter
     private String basePath;
     @Getter
@@ -22,7 +22,7 @@ public class JarCache {
     @Getter
     private Map<String, Map<String, String>> class2Path = new ConcurrentHashMap<>();
 
-    public JarCache(String basePath) {
+    public ClassAndJarCache(String basePath) {
         if (StringUtils.isBlank(basePath)) {
             throw new FrameworkException("基础路径不能为空");
         }
