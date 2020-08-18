@@ -21,7 +21,7 @@ public class TestCompiler {
                 log.debug("编译结果- > {}", taskResult.isSucceed());
             }
         });*/
-        WebsiphonClassLoader loader = new WebsiphonClassLoader();
+        WebsiphonClassLoader loader = new WebsiphonClassLoader("config");
         loader.loadClassFromByte("my.response.handler.MyResponseHandler",
                 FileUtils.readFileToByteArray(
                         new File("config/compiler/my/response/handler/MyResponseHandler.class")));
@@ -41,7 +41,7 @@ public class TestCompiler {
 
     @Test
     public void test2() throws Exception {
-        WebsiphonClassLoader loader = new WebsiphonClassLoader();
+        WebsiphonClassLoader loader = new WebsiphonClassLoader("config");
         Class clazz = loader.loadClass("my.response.handler.MyResponseHandler");
         Method method = clazz.getDeclaredMethod("processorChain");
         Object o = clazz.getConstructor().newInstance();

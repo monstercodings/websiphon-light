@@ -1,32 +1,33 @@
 package top.codings.websiphon.light.bean;
 
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class WebsiphonClassLoader extends URLClassLoader {
-    /*private final static String BASE_PATH = new File("").getAbsolutePath().concat("/config/compiler/");
-    private static URL[] baseUrls;*/
+public class WebsiphonClassLoader extends ClassLoader {
+    private JarCache jarCache;
     private Map<String, Class<?>> cacheClass = new ConcurrentHashMap<>();
 
-    /*static {
-        try {
-            baseUrls = new URL[]{
-                    new URL("file://" + BASE_PATH),
-            };
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-    }*/
-
-    public WebsiphonClassLoader(URL[] urls) {
-        super(urls);
+    public WebsiphonClassLoader(String basePath) {
+        this(basePath, null);
     }
 
+    public WebsiphonClassLoader(JarCache jarCache) {
+        this(null, jarCache);
+    }
 
-    public WebsiphonClassLoader() {
-        this(new URL[0]);
+    public WebsiphonClassLoader(String basePath, JarCache jarCache) {
+        if (null == jarCache) {
+            jarCache = new JarCache(basePath);
+        }
+        this.jarCache = jarCache;
+    }
+
+    public Class<?> loadClass(String name, String version) {
+        try {
+            return findClass(name);
+        } catch (ClassNotFoundException e) {
+            return loadClassFromByte(name, jarCache.loadClassByte(name, version));
+        }
     }
 
     @Override
@@ -37,19 +38,14 @@ public class WebsiphonClassLoader extends URLClassLoader {
         return super.findClass(name);
     }
 
-    /*private Class<?> findClass0(String name) throws ClassNotFoundException {
-        String fullPath = BASE_PATH.concat(name.replace(".", "/").concat(".class"));
-        try {
-            byte[] bytes = IOUtils.toByteArray(URI.create("file://" + fullPath));
-            return defineClass(name, bytes, 0, bytes.length);
-        } catch (IOException e) {
-            throw new ClassNotFoundException("读取Class文件失败", e);
-        }
-    }*/
-
     public Class<?> loadClassFromByte(String name, byte[] bytes) {
-        Class<?> clazz = defineClass(name, bytes, 0, bytes.length);
-        cacheClass.put(name, clazz);
-        return clazz;
+        try {
+            return findClass(name);
+        } catch (ClassNotFoundException e) {
+            Class<?> clazz = defineClass(name, bytes, 0, bytes.length);
+            cacheClass.put(name, clazz);
+            return clazz;
+        }
+
     }
 }
