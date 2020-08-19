@@ -14,6 +14,7 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -40,16 +41,33 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     private Bootstrap bootstrap;
     private NioEventLoopGroup workerGroup;
     private SSLContext sslContext;
+    private NettyConfig config;
     @Getter
     @Setter
     private IResponseHandler responseHandler;
 
     public NettyRequester() {
-        this(null);
+        this(null, null);
     }
 
-    protected NettyRequester(CombineRequester requester) {
+    public NettyRequester(NettyConfig config) {
+        this(null, config);
+
+    }
+
+    protected NettyRequester(CombineRequester requester, NettyConfig config) {
         super(requester);
+        if (config == null) {
+            config = NettyConfig.builder()
+                    .connectTimeoutMillis(6000)
+                    .idleTimeMillis(6000)
+                    .ignoreSslError(false)
+                    .maxContentLength(1024 * 512)
+                    .networkErrorStrategy(NetworkErrorStrategy.RESPONSE)
+                    .build();
+        }
+        this.config = config;
+        setStrategy(config.getNetworkErrorStrategy());
     }
 
     @Override
@@ -61,139 +79,19 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE, false)
                 .option(ChannelOption.TCP_NODELAY, true)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 6000)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, config.getConnectTimeoutMillis())
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
-                        /*socketChannel.closeFuture().addListener((ChannelFutureListener) channelFuture -> {
-                            request.lock();
-                            try {
-                                cf.completeAsync(() -> request);
-                            } finally {
-                                request.unlock();
-                            }
-                        });
-                        socketChannel.pipeline()
-                                .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, 6, TimeUnit.SECONDS) {
-                                    @Override
-                                    protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-                                        request.lock();
-                                        try {
-                                            if (null != request.requestResult) {
-                                                return;
-                                            }
-                                            request.requestResult = new IRequest.RequestResult();
-                                            request.requestResult.setThrowable(new RuntimeException("网络传输超时"));
-                                            request.requestResult.setSucceed(false);
-                                        } finally {
-                                            request.unlock();
-                                            ctx.close();
-                                        }
-                                    }
-                                })
-                                .addLast(new HttpClientCodec())
-                                .addLast(new HttpContentDecompressor())
-                                .addLast(new HttpObjectAggregator(1024 * 512))
-                                .addLast(new SimpleChannelInboundHandler<HttpResponse>() {
-                                    @Override
-                                    protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpResponse httpResponse) throws Exception {
-                                        request.lock();
-                                        try {
-                                            if (null != request.requestResult) {
-                                                return;
-                                            }
-                                            request.setStatus(IRequest.Status.RESPONSE);
-                                            request.requestResult = new IRequest.RequestResult();
-                                            if (!httpResponse.decoderResult().isSuccess()) {
-                                                request.requestResult.setSucceed(false);
-                                                request.requestResult.setThrowable(new RuntimeException("响应解析失败"));
-                                                responseHandler.handle(request);
-                                                return;
-                                            }
-                                            int code = httpResponse.status().code();
-                                            request.requestResult.setCode(code);
-                                            if (code < 200 || code >= 300) {
-                                                request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
-                                                responseHandler.handle(request);
-                                                return;
-                                            }
-                                            String contentTypeStr = httpResponse.headers().get("content-type");
-                                            byte[] body;
-                                            if (httpResponse instanceof FullHttpResponse) {
-                                                FullHttpResponse response = (FullHttpResponse) httpResponse;
-                                                body = ByteBufUtil.getBytes(response.content());
-                                            } else {
-                                                log.warn("响应类型尚未有处理方案 -> %s", httpResponse.getClass().getName());
-                                                request.requestResult.setSucceed(false);
-                                                request.requestResult.setThrowable(new RuntimeException("响应类型不匹配"));
-                                                return;
-                                            }
-                                            Charset charset;
-                                            String mimeType;
-                                            ContentType contentType;
-                                            if (StringUtils.isNotBlank(contentTypeStr)) {
-                                                contentType = ContentType.parse(contentTypeStr);
-                                                mimeType = contentType.getMimeType();
-                                                charset = contentType.getCharset();
-                                            } else {
-                                                charset = HttpCharsetUtil.findCharset(body);
-                                                mimeType = "text/html";
-                                            }
-                                            if ((mimeType.contains("text") || mimeType.contains("json")) && charset == null) {
-                                                channelHandlerContext.close();
-                                                request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
-                                                responseHandler.handle(request);
-                                                return;
-                                            }
-                                            if (mimeType.contains("text")) {
-                                                // 文本解析
-                                                request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
-                                                request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
-                                            } else if (mimeType.contains("json")) {
-                                                // JSON解析
-                                                request.requestResult.setResponseType(IRequest.ResponseType.JSON);
-                                                request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
-                                            } else {
-                                                // 字节解析
-                                                request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
-                                                request.requestResult.setData(body);
-                                            }
-                                            responseHandler.handle(request);
-                                        } catch (Exception e) {
-                                            request.requestResult.setSucceed(false);
-                                            request.requestResult.setThrowable(e);
-                                        } finally {
-                                            request.unlock();
-                                            channelHandlerContext.close();
-                                        }
-                                    }
-
-                                    @Override
-                                    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                                        request.lock();
-                                        try {
-                                            if (null != request.requestResult) {
-                                                return;
-                                            }
-                                            request.setStatus(IRequest.Status.ERROR);
-                                            request.requestResult = new IRequest.RequestResult();
-                                            request.requestResult.setThrowable(cause);
-                                            request.requestResult.setSucceed(false);
-                                            if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
-                                                responseHandler.handle(request);
-                                            }
-                                        } finally {
-                                            request.unlock();
-                                            ctx.close();
-                                        }
-                                    }
-                                })
-                        ;*/
                     }
                 })
         ;
         try {
-            sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
+            if (config.isIgnoreSslError()) {
+                sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
+            } else {
+                sslContext = SSLContext.getDefault();
+            }
         } catch (Exception e) {
             return CompletableFuture.failedFuture(new FrameworkException("初始化SSL套件失败", e));
         }
@@ -226,7 +124,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
             });
             if (channelFuture.isSuccess()) {
                 channelFuture.channel().pipeline()
-                        .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, 6, TimeUnit.SECONDS) {
+                        .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, config.getIdleTimeMillis(), TimeUnit.MILLISECONDS) {
                             @Override
                             protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
                                 request.lock();
@@ -245,7 +143,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                         })
                         .addLast(new HttpClientCodec())
                         .addLast(new HttpContentDecompressor())
-                        .addLast(new HttpObjectAggregator(1024 * 512))
+                        .addLast(new HttpObjectAggregator(config.getMaxContentLength()))
                         .addLast(new SimpleChannelInboundHandler<HttpResponse>() {
                             @Override
                             protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpResponse httpResponse) throws Exception {
@@ -298,7 +196,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                     if (charset == null) {
                                         charset = HttpCharsetUtil.findCharset(body);
                                     }
-                                    if ((mimeType.contains("text") || mimeType.contains("json")) && charset == null) {
+                                    if (mimeType.contains("json") && charset == null) {
+                                        charset = Charset.forName("utf-8");
+                                    }
+                                    if (mimeType.contains("text") && charset == null) {
                                         request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
                                         if (null != responseHandler) {
                                             responseHandler.handle(request);
@@ -439,4 +340,30 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         }
         return completableFuture;
     }
+
+    @Getter
+    @Builder
+    public static class NettyConfig {
+        /**
+         * 连接超时时间
+         */
+        private int connectTimeoutMillis;
+        /**
+         * 传输超时设定
+         */
+        private int idleTimeMillis;
+        /**
+         * 是否忽略ssl错误
+         */
+        private boolean ignoreSslError;
+        /**
+         * 最大允许接受的响应长度
+         */
+        private int maxContentLength;
+        /**
+         * 网络异常时的请求对象的处理策略
+         */
+        private IRequester.NetworkErrorStrategy networkErrorStrategy;
+    }
+
 }

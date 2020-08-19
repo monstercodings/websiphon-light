@@ -8,6 +8,7 @@ import top.codings.websiphon.light.requester.IRequester;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class CombineRequester<T extends IRequest> implements IRequester<T> {
+    protected volatile boolean shutdown;
     protected CombineRequester<T> requester;
     private Class<T> requestClass;
     private IRequester.NetworkErrorStrategy strategy = IRequester.NetworkErrorStrategy.DROP;

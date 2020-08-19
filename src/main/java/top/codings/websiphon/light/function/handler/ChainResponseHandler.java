@@ -38,7 +38,7 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
                         // 先阻塞获取任务
-                        IRequest request = queue.poll(1, TimeUnit.MINUTES);
+                        IRequest request = queue.poll(30, TimeUnit.SECONDS);
                         if (null == request) {
                             if (log.isDebugEnabled()) {
                                 log.debug("当前剩余响应 -> {}", queue.size());

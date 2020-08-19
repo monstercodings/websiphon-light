@@ -25,6 +25,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
     private Semaphore token;
     private int maxNetworkConcurrency;
     private LinkedTransferQueue<IRequest> queue;
+    private int taskTimeoutMillis;
     private DelayQueue<Inner> timeoutQueue;
     private ExecutorService exe;
     private BiConsumer<IRequest, ICrawler> timeoutHandler;
@@ -35,13 +36,14 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
      */
     private volatile boolean normal;
 
-    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency) {
-        this(requester, maxNetworkConcurrency, null);
+    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, int taskTimeoutMillis) {
+        this(requester, maxNetworkConcurrency, taskTimeoutMillis, null);
     }
 
-    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, BiConsumer<IRequest, ICrawler> timeoutHandler) {
+    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, int taskTimeoutMillis, BiConsumer<IRequest, ICrawler> timeoutHandler) {
         super(requester);
         this.maxNetworkConcurrency = maxNetworkConcurrency;
+        this.taskTimeoutMillis = taskTimeoutMillis;
         if (maxNetworkConcurrency > 0) {
             token = new Semaphore(maxNetworkConcurrency);
         }
@@ -56,7 +58,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
             exe = Executors.newFixedThreadPool(2, new DefaultThreadFactory(NAME));
             exe.submit(() -> {
                 // TODO 未来做智能阈值
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted() && !shutdown) {
                     try {
                         if (limitMemory > 0) {
                             checkMemory();
@@ -74,7 +76,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                         // 将标记位恢复
                         normal = true;
                         request.setStatus(IRequest.Status.REQUEST);
-                        Inner inner = new Inner(request);
+                        Inner inner = new Inner(request, taskTimeoutMillis);
                         timeoutQueue.offer(inner);
                         requester.execute(request)
                                 .whenCompleteAsync((aVoid, throwable) -> {
@@ -101,9 +103,12 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                 }
             });
             exe.submit(() -> {
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted() && !shutdown) {
                     try {
-                        Inner inner = timeoutQueue.take();
+                        Inner inner = timeoutQueue.poll(30, TimeUnit.SECONDS);
+                        if (inner == null) {
+                            continue;
+                        }
                     /*String url = "";
                     if (inner.request instanceof BuiltinRequest) {
                         url = ((HttpRequest) inner.request.getHttpRequest()).uri().toString();
@@ -184,6 +189,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
         if (null != queue) {
             queue.clear();
         }
+        shutdown = true;
         return super.shutdown(force);
     }
 
@@ -237,7 +243,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
     }
 
     private static class Inner implements Delayed {
-        int timeout = 30000;
         IRequest request;
         long trigger;
 
@@ -245,7 +250,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
             request = null;
         }
 
-        public Inner(IRequest request) {
+        public Inner(IRequest request, int timeout) {
             this.request = request;
             trigger = System.currentTimeMillis() + timeout;
         }

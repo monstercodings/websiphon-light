@@ -25,10 +25,6 @@ public class CrawlerConfig {
     @Setter
     private int maxConcurrentProcessing;
     /**
-     * 最大网络并发数
-     */
-    private int maxNetworkConcurrency;
-    /**
      * 响应处理器的全限定类名
      */
     private String responseHandlerImplClass;

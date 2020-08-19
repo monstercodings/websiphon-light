@@ -29,7 +29,7 @@ public class BaseCrawler extends CombineCrawler {
         this(config, responseHandler, null);
     }
 
-    public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler, IRequester requester) {
+    public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler, CombineRequester requester) {
         if (config.getMaxConcurrentProcessing() <= 0) {
             config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors() + 1);
         }
@@ -55,8 +55,12 @@ public class BaseCrawler extends CombineCrawler {
                     .newBuilder(config)
                     .responseHandler(responseHandler)
                     .build();
-            setRequester(combineRequester);
+            requester = combineRequester;
+        } else {
+            requester.setResponseHandler(responseHandler);
+            requester.setStrategy(config.getNetworkErrorStrategy());
         }
+        setRequester(requester);
     }
 
     @Override
