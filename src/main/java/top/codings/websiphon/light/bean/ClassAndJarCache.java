@@ -45,8 +45,8 @@ public class ClassAndJarCache {
                     realPath = String.join("/", basePath, path, filename);
                 }
                 if (filename.endsWith(".jar")) {
-                    String[] filenameStrs = filename.replace(".jar", "").split("-");
-                    String version = filenameStrs[filenameStrs.length - 1];
+                    String[] pathArray = path.split("/");
+                    String version = pathArray[pathArray.length - 1];
                     JarFile jarFile = new JarFile(file);
                     try {
                         Enumeration<JarEntry> enumeration = jarFile.entries();

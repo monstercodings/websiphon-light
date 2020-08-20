@@ -6,7 +6,7 @@
 
     <groupId>top.codings</groupId>
     <artifactId>websiphon-light</artifactId>
-    <version>0.0.57.Final</version>
+    <version>0.0.58</version>
 
     <parent>
         <artifactId>root-pom</artifactId>
