@@ -41,7 +41,8 @@ public class ClassAndJarCache {
                 if (StringUtils.isBlank(path)) {
                     realPath = basePath + "/" + filename;
                 } else {
-                    realPath = basePath + "/" + path.replace(".", "/") + "/" + filename;
+//                    realPath = basePath + "/" + path.replace(".", "/") + "/" + filename;
+                    realPath = String.join("/", basePath, path, filename);
                 }
                 if (filename.endsWith(".jar")) {
                     String[] filenameStrs = filename.replace(".jar", "").split("-");
@@ -70,8 +71,11 @@ public class ClassAndJarCache {
                         jarFile.close();
                     }
                 } else if (filename.endsWith(".class")) {
-                    String className = filename.split("-")[0];
-                    String version = filename.split("-")[1].replace(".class", "");
+                    /*String className = filename.split("-")[0];
+                    String version = filename.split("-")[1].replace(".class", "");*/
+                    String className = filename.replace(".class", "");
+                    String[] pathArray = path.split("/");
+                    String version = pathArray[pathArray.length - 1];
                     Map<String, String> version2Path = class2Path.get(className);
                     if (null == version2Path) {
                         version2Path = new ConcurrentHashMap<>();
@@ -85,7 +89,7 @@ public class ClassAndJarCache {
             if (StringUtils.isBlank(path)) {
                 next = file.getName();
             } else {
-                next = String.format("%s.%s", path, file.getName());
+                next = String.format("%s/%s", path, file.getName());
             }
             scan(next, file.listFiles());
         }
