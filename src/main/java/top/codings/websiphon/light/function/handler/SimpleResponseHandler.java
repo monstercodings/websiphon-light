@@ -5,6 +5,8 @@ import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.processor.IProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -17,24 +19,29 @@ import java.util.function.Function;
 public abstract class SimpleResponseHandler extends ChainResponseHandler {
     protected List<Function<IRequest, IRequest>> successes = new CopyOnWriteArrayList<>();
     protected List<Function<IRequest, IRequest>> errors = new CopyOnWriteArrayList<>();
+    private IProcessor processor;
 
     @Override
     public CompletableFuture<IResponseHandler> startup(ICrawler crawler) {
-        IProcessor processor = processorChain();
-        successes.add(request -> {
-            IRequest.RequestResult result = request.getRequestResult();
-            Object data = result.get();
-            processor.process(data, request, crawler);
-            return request;
-        });
-        errors.add(request -> {
-            IRequest.RequestResult result = request.getRequestResult();
-            Throwable throwable = result.cause();
-            handleError(request, throwable, crawler);
+        CompletableFuture completableFuture = CompletableFuture.supplyAsync(() -> {
+            processor = processorChain();
+            successes.add(request -> {
+                IRequest.RequestResult result = request.getRequestResult();
+                Object data = result.get();
+                processor.process(data, request, crawler);
+                return request;
+            });
+            errors.add(request -> {
+                IRequest.RequestResult result = request.getRequestResult();
+                Throwable throwable = result.cause();
+                handleError(request, throwable, crawler);
 //            log.error("发生异常 -> {}", throwable.getClass());
-            return request;
+                return request;
+            });
+            processor.init(crawler);
+            return this;
         });
-        return super.startup(crawler);
+        return completableFuture.thenCombineAsync(super.startup(crawler), (o, o2) -> o);
     }
 
     @Override
@@ -71,6 +78,20 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
         } catch (Exception e) {
             log.error("处理异常失败", e);
         }
+    }
+
+    @Override
+    public CompletableFuture<IResponseHandler> shutdown(boolean force) {
+        return super.shutdown(force).thenCombineAsync(CompletableFuture.supplyAsync(() -> {
+            if (processor instanceof Closeable) {
+                try {
+                    ((Closeable) processor).close();
+                } catch (IOException e) {
+                    log.error("关闭处理器时发生异常");
+                }
+            }
+            return this;
+        }), (iResponseHandler, simpleResponseHandler) -> simpleResponseHandler);
     }
 
     /**

@@ -5,8 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 @Slf4j
-public abstract class AbstractProcessor<T> implements IProcessor {
+public abstract class AbstractProcessor<T> implements IProcessor, Closeable {
     private TypeParameterMatcher matcher;
     private AbstractProcessor root;
     private AbstractProcessor prev;
@@ -25,6 +28,26 @@ public abstract class AbstractProcessor<T> implements IProcessor {
     }
 
     @Override
+    public void init(ICrawler crawler) {
+        AbstractProcessor p;
+        for (p = root; p != null; p = p.next) {
+            p.init0(crawler);
+        }
+    }
+
+    protected abstract void init0(ICrawler crawler);
+
+    @Override
+    public void close() throws IOException {
+        AbstractProcessor p;
+        for (p = root; p != null; p = p.next) {
+            p.close0();
+        }
+    }
+
+    protected abstract void close0() throws IOException;
+
+    @Override
     public void process(Object o, IRequest request, ICrawler crawler) {
         for (AbstractProcessor p = root; p != null; p = p.next) {
             if (p.matcher.match(o)) {
@@ -40,24 +63,6 @@ public abstract class AbstractProcessor<T> implements IProcessor {
             }
         }
     }
-
-    /*public static void loop(Object o, BuiltinRequest request) {
-        for (AbstractProcessor processor : PROCESSORS) {
-            if (!processor.fullProcess(o, request)) {
-                break;
-            }
-        }
-    }
-
-    public static AbstractProcessor addProcessor(AbstractProcessor... processors) {
-        if (processors.length > 0) {
-            PROCESSORS.addAll(Arrays.asList(processors));
-        }
-        if (PROCESSORS.isEmpty()) {
-            return null;
-        }
-        return PROCESSORS.get(0);
-    }*/
 
     protected abstract Object process0(T data, IRequest request, ICrawler crawler) throws Exception;
 }

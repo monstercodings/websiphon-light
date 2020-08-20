@@ -8,8 +8,10 @@ import top.codings.websiphon.light.function.handler.StatResponseHandler;
 import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.function.processor.IProcessor;
 import top.codings.websiphon.light.function.processor.JSONProcessor;
+import top.codings.websiphon.light.function.processor.Text2DocProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.io.IOException;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
@@ -18,11 +20,27 @@ public class TestResponseHandler extends StatResponseHandler {
     protected IProcessor processorChain() {
         return new AbstractProcessor<String>() {
             @Override
+            protected void init0(ICrawler crawler) {
+                if (log.isDebugEnabled()) {
+                    log.debug("初始化");
+                }
+            }
+
+            @Override
+            protected void close0() throws IOException {
+                if (log.isDebugEnabled()) {
+                    log.debug("关闭处理器");
+                }
+            }
+
+            @Override
             protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
-                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(),(data.length() > 20 ? data.substring(0, 20) : data));
+                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), (data.length() > 20 ? data.substring(0, 20) : data));
                 return data;
             }
-        }.next(new JSONProcessor());
+        }
+                .next(new Text2DocProcessor())
+                .next(new JSONProcessor());
         /*return new Text2DocProcessor()
                 .next(new AbstractProcessor<Document>() {
                     @Override

@@ -4,5 +4,7 @@ import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 
 public interface IProcessor {
+    void init(ICrawler crawler);
+
     void process(Object o, IRequest request, ICrawler crawler);
 }

@@ -15,9 +15,6 @@ public interface QueueResponseHandler extends IResponseHandler{
 
     boolean isBusy();
 
-//    boolean push(IRequest request);
-
     void whenFinish(ICrawler crawler);
 
-//    void setCrawler(ICrawler crawler);
 }

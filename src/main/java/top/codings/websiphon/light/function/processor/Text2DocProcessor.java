@@ -8,6 +8,8 @@ import org.jsoup.nodes.Document;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.io.IOException;
+
 @Slf4j
 @NoArgsConstructor
 public class Text2DocProcessor extends AbstractProcessor<String> {
@@ -32,5 +34,13 @@ public class Text2DocProcessor extends AbstractProcessor<String> {
             log.error("文档化失败 -> {}", data);
         }
         return document;
+    }
+
+    @Override
+    public void init0(ICrawler crawler) {
+    }
+
+    @Override
+    protected void close0() throws IOException {
     }
 }
