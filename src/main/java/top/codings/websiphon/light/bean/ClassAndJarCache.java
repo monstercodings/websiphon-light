@@ -102,7 +102,12 @@ public class ClassAndJarCache {
         String realPath;
         if (class2Path.containsKey(name)) {
             Map<String, String> version2Path = class2Path.get(name);
-            realPath = version2Path.get(version);
+            // TODO 此处临时解决，需要更好的解决方案
+            if (version2Path.size() == 1) {
+                realPath = version2Path.values().stream().findFirst().get();
+            } else {
+                realPath = version2Path.get(version);
+            }
             if (StringUtils.isBlank(realPath)) {
                 throw new FrameworkException("该类名不存在");
             }
@@ -113,7 +118,12 @@ public class ClassAndJarCache {
             }
         } else if (class2Jar.containsKey(name)) {
             Map<String, String> version2Jar = class2Jar.get(name);
-            realPath = version2Jar.get(version);
+            // TODO 此处临时解决，需要更好的解决方案
+            if (version2Jar.size() == 1) {
+                realPath = version2Jar.values().stream().findFirst().get();
+            } else {
+                realPath = version2Jar.get(version);
+            }
             if (StringUtils.isBlank(realPath)) {
                 throw new FrameworkException("该类名不存在");
             }
