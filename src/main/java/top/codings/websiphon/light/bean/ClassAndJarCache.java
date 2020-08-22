@@ -59,8 +59,8 @@ public class ClassAndJarCache {
                                 continue;
                             }
                             String className = entry.getName()
-                                    .replace("/", ".")
-                                    .replace(".class", "");
+                                    .replace(".class", "")
+                                    .replace("/", ".");
                             Map<String, String> version2Jar = class2Jar.get(className);
                             if (null == version2Jar) {
                                 version2Jar = new ConcurrentHashMap<>();
@@ -153,8 +153,8 @@ public class ClassAndJarCache {
             jarFile.stream().forEach(entry -> {
                 if (!entry.getName().endsWith(".class")) return;
                 String className = entry.getName()
-                        .replace("/", ".")
-                        .replace(".class", "");
+                        .replace(".class", "")
+                        .replace("/", ".");
                 try (BufferedInputStream bis = new BufferedInputStream(jarFile.getInputStream(entry))) {
                     map.put(className, bis.readAllBytes());
                 } catch (IOException e) {
