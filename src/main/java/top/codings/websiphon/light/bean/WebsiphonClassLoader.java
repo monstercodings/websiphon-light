@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WebsiphonClassLoader extends ClassLoader {
     private ClassAndJarCache classAndJarCache;
     private Map<String, Class<?>> cacheClass = new ConcurrentHashMap<>();
+    private Map<String, byte[]> tempClassByte = new ConcurrentHashMap<>();
 
     public WebsiphonClassLoader(String basePath) {
         this(basePath, null);
@@ -35,7 +36,19 @@ public class WebsiphonClassLoader extends ClassLoader {
         if (cacheClass.containsKey(name)) {
             return cacheClass.get(name);
         }
+        if (tempClassByte.containsKey(name)) {
+            byte[] bytes = tempClassByte.get(name);
+            return defineClass(name, bytes, 0, bytes.length);
+        }
         return super.findClass(name);
+    }
+
+    public void clearTempClassByte() {
+        tempClassByte.clear();
+    }
+
+    public void addTempClassByte(Map<String, byte[]> map) {
+        tempClassByte.putAll(map);
     }
 
     public Class<?> loadClassFromByte(String name, byte[] bytes) {

@@ -151,7 +151,6 @@ public class BaseCrawler extends CombineCrawler {
             }
             Optional.ofNullable(config.getShutdownHook()).ifPresent(action -> action.accept(this.wrapper()));
         };
-        System.out.println(Thread.currentThread().getName());
         if (Thread.currentThread().isInterrupted()) {
             new Thread(runnable).start();
         } else {
