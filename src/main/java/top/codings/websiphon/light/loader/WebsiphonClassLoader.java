@@ -32,7 +32,7 @@ public class WebsiphonClassLoader extends URLClassLoader {
         Map<Class<?>, Object> classes = new ConcurrentHashMap<>();
         try {
             for (String packageName : packageNames) {
-                if (StringUtils.isBlank(packageName)) {
+                if (StringUtils.equals(packageName, null)) {
                     continue;
                 }
                 String packagePath = packageName.replace(".", "/");
