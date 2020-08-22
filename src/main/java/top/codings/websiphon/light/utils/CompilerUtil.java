@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.bean.TaskResult;
-import top.codings.websiphon.light.bean.WebsiphonClassLoader;
 import top.codings.websiphon.light.error.FrameworkException;
 
 import javax.tools.JavaCompiler;
@@ -12,7 +11,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
 
@@ -25,7 +23,7 @@ public class CompilerUtil {
     private static final StandardJavaFileManager STANDARD_JAVA_FILE_MANAGER = JAVA_COMPILER.getStandardFileManager(null, null, null);
     private static URL[] urls;
 //    @Getter
-//    private volatile static WebsiphonClassLoader classLoader;
+//    private volatile static WebsiphonClassLoaderOld classLoader;
 
 
     static {
@@ -34,7 +32,7 @@ public class CompilerUtil {
             FileUtils.forceMkdirParent(file);
             urls = new URL[]{
                     new URL("file://".concat(BASE_PATH))};
-//            classLoader = new WebsiphonClassLoader(urls);
+//            classLoader = new WebsiphonClassLoaderOld(urls);
         } catch (Exception e) {
             log.error("初始化本地Class的URL失败", e);
         }

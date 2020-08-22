@@ -1,9 +1,8 @@
 package top.codings.websiphon.light.test;
 
-import com.alibaba.fastjson.JSON;
 import org.junit.jupiter.api.Test;
 import top.codings.websiphon.light.bean.ClassAndJarCache;
-import top.codings.websiphon.light.bean.WebsiphonClassLoader;
+import top.codings.websiphon.light.bean.WebsiphonClassLoaderOld;
 
 public class TestClassAndJarCache {
     @Test
@@ -18,7 +17,7 @@ public class TestClassAndJarCache {
 //        String name = "top.codings.vdash.protocol.component.protocol.packet.v1.TransferPacket$Response";
         String name = "my.response.handler.MyResponseHandler$1";
         String version = "0.0.1";
-        WebsiphonClassLoader loader = new WebsiphonClassLoader("config");
+        WebsiphonClassLoaderOld loader = new WebsiphonClassLoaderOld("config");
         Class<?> clazz;
         try {
             clazz = loader.loadClass(name);

@@ -4,7 +4,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
-import top.codings.websiphon.light.bean.WebsiphonClassLoader;
+import top.codings.websiphon.light.bean.WebsiphonClassLoaderOld;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -21,7 +21,7 @@ public class TestCompiler {
                 log.debug("编译结果- > {}", taskResult.isSucceed());
             }
         });*/
-        WebsiphonClassLoader loader = new WebsiphonClassLoader("config");
+        WebsiphonClassLoaderOld loader = new WebsiphonClassLoaderOld("config");
         loader.loadClassFromByte("my.response.handler.MyResponseHandler",
                 FileUtils.readFileToByteArray(
                         new File("config/compiler/my/response/handler/MyResponseHandler.class")));
@@ -41,7 +41,7 @@ public class TestCompiler {
 
     @Test
     public void test2() throws Exception {
-        WebsiphonClassLoader loader = new WebsiphonClassLoader("config");
+        WebsiphonClassLoaderOld loader = new WebsiphonClassLoaderOld("config");
         Class clazz = loader.loadClass("my.response.handler.MyResponseHandler");
         Method method = clazz.getDeclaredMethod("processorChain");
         Object o = clazz.getConstructor().newInstance();
