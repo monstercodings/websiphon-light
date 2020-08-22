@@ -2,6 +2,7 @@ package top.codings.websiphon.light.loader;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,11 +11,15 @@ import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLDecoder;
-import java.util.*;
+import java.util.Enumeration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 
 @Slf4j
 public class WebsiphonClassLoader extends URLClassLoader {
+    private final static Object VALUE = new Object();
+
     public WebsiphonClassLoader(URL[] urls) {
         super(urls);
     }
@@ -24,21 +29,24 @@ public class WebsiphonClassLoader extends URLClassLoader {
     }
 
     public Class<?>[] findClassByConditionality(String[] packageNames, Class<? extends Annotation> annotationClass) {
-        Collection<Class<?>> classes = new HashSet<>();
+        Map<Class<?>, Object> classes = new ConcurrentHashMap<>();
         try {
             for (String packageName : packageNames) {
+                if (StringUtils.isBlank(packageName)) {
+                    continue;
+                }
                 String packagePath = packageName.replace(".", "/");
                 findClasses(annotationClass, classes, packagePath, getParent().getResources(packagePath));
                 findClasses(annotationClass, classes, packagePath, getResources(packagePath));
             }
-            return classes.toArray(new Class<?>[0]);
+            return classes.keySet().toArray(new Class<?>[0]);
         } catch (IOException e) {
             log.error("获取类失败", e);
             return new Class<?>[0];
         }
     }
 
-    private void findClasses(Class<? extends Annotation> annotationClass, Collection<Class<?>> classes, String packagePath, Enumeration<URL> enumeration) throws IOException {
+    private void findClasses(Class<? extends Annotation> annotationClass, Map<Class<?>, Object> classes, String packagePath, Enumeration<URL> enumeration) throws IOException {
         while (enumeration.hasMoreElements()) {
             URL url = enumeration.nextElement();
             String protocol = url.getProtocol();
@@ -74,13 +82,13 @@ public class WebsiphonClassLoader extends URLClassLoader {
         }
     }
 
-    private void findClassByConditionality(Class<? extends Annotation> annotationClass, Collection<Class<?>> classes, String className) {
+    private void findClassByConditionality(Class<? extends Annotation> annotationClass, Map<Class<?>, Object> classes, String className) {
         try {
             Class clazz = loadClass(className);
             if (annotationClass == null) {
-                classes.add(clazz);
+                classes.put(clazz, VALUE);
             } else if (clazz.getAnnotation(annotationClass) != null) {
-                classes.add(clazz);
+                classes.put(clazz, VALUE);
             }
         } catch (Exception e) {
             log.error("无法找到该类 -> {}", className, e);

@@ -11,16 +11,19 @@ public class TestClassLoader {
     @Test
     public void test1() throws Exception {
         String packageName1 = "top.codings.crawler.processor.plugins";
-        String packageName2 = "top.codings.websiphon.light";
+//        String packageName2 = "top.codings.websiphon.light";
         WebsiphonClassLoader classloader = new WebsiphonClassLoader(new URL[]{
                 new URL("file://" + new File("data/spider-processor-plugins.jar").getAbsolutePath()),
         });
-        for (Class<?> clazz : classloader.findClassByConditionality(new String[]{packageName1, packageName2}, PluginDefinition.class)) {
+        for (Class<?> clazz : classloader.findClassByConditionality(new String[]{packageName1}, PluginDefinition.class)) {
             PluginDefinition pluginDefinition = clazz.getAnnotation(PluginDefinition.class);
+            System.out.println(clazz.getName());
             System.out.println(pluginDefinition.name());
-            System.out.println(pluginDefinition.version());
             System.out.println(pluginDefinition.description());
-            System.out.println(pluginDefinition.primary());
+            if (pluginDefinition.primary()) {
+                System.out.println(pluginDefinition.version());
+            }
+            System.out.println("-------------------------");
         }
 
     }
