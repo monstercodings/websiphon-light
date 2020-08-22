@@ -14,6 +14,7 @@ import top.codings.websiphon.light.requester.support.CombineRequester;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 
 @Slf4j
 public class BaseCrawler extends CombineCrawler {
@@ -139,7 +140,24 @@ public class BaseCrawler extends CombineCrawler {
                 completableFuture = completableFuture.thenCombineAsync(((QueueResponseHandler) responseHandler).shutdown(force), (crawler, iResponseHandler) -> crawler);
             }
         }
-        Optional.ofNullable(config.getShutdownHook()).ifPresent(action -> action.accept(this.wrapper()));
+        CountDownLatch latch = new CountDownLatch(1);
+        completableFuture.whenCompleteAsync((crawler, throwable) -> latch.countDown());
+        // TODO 未来看看有没有更好的解决方案
+        Runnable runnable = () -> {
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Optional.ofNullable(config.getShutdownHook()).ifPresent(action -> action.accept(this.wrapper()));
+        };
+        System.out.println(Thread.currentThread().getName());
+        if (Thread.currentThread().isInterrupted()) {
+            new Thread(runnable).start();
+        } else {
+            runnable.run();
+        }
+
         stop = true;
         begin = false;
         return completableFuture;

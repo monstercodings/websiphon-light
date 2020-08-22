@@ -43,12 +43,13 @@ public class RegressionTesting {
                         (iRequest, c) -> System.out.println("超时弹出")));
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
-            c.push("https://vdash.codings.top:7921");
+            c.push("https://www.baidu.com");
 //            c.push("http://localhost:8080/header");
         });
 //        Thread.currentThread().join();
         /*while (crawler.isBusy()) {
             Thread.onSpinWait();
-        }*/
+        }
+        crawler.shutdown();*/
     }
 }

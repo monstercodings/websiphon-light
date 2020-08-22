@@ -12,6 +12,7 @@ import top.codings.websiphon.light.function.processor.Text2DocProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
@@ -30,6 +31,14 @@ public class TestResponseHandler extends StatResponseHandler {
             protected void close0() throws IOException {
                 if (log.isDebugEnabled()) {
                     log.debug("关闭处理器");
+                }
+                try {
+                    TimeUnit.SECONDS.sleep(20);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (log.isDebugEnabled()) {
+                    log.debug("休眠结束");
                 }
             }
 
