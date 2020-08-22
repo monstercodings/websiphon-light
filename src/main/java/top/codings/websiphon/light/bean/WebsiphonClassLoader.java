@@ -35,11 +35,7 @@ public class WebsiphonClassLoader extends ClassLoader {
         if (cacheClass.containsKey(name)) {
             return cacheClass.get(name);
         }
-        try {
-            return super.findClass(name);
-        } catch (ClassNotFoundException e) {
-            return loadClassFromByte(name, classAndJarCache.loadClassByte(name, null), true);
-        }
+        return super.findClass(name);
     }
 
     public Class<?> loadClassFromByte(String name, byte[] bytes) {

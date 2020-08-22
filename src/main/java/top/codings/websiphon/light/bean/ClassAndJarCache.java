@@ -9,7 +9,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -47,8 +49,7 @@ public class ClassAndJarCache {
                 if (filename.endsWith(".jar")) {
                     String[] pathArray = path.split("/");
                     String version = pathArray[pathArray.length - 1];
-                    JarFile jarFile = new JarFile(file);
-                    try {
+                    try (JarFile jarFile = new JarFile(file)) {
                         Enumeration<JarEntry> enumeration = jarFile.entries();
                         while (enumeration.hasMoreElements()) {
                             JarEntry entry = enumeration.nextElement();
@@ -67,8 +68,6 @@ public class ClassAndJarCache {
                             }
                             version2Jar.put(version, realPath);
                         }
-                    } finally {
-                        jarFile.close();
                     }
                 } else if (filename.endsWith(".class")) {
                     /*String className = filename.split("-")[0];
@@ -96,19 +95,19 @@ public class ClassAndJarCache {
     }
 
     public byte[] loadClassByte(String name, String version) {
-        if (StringUtils.isBlank(name)) {
+        if (StringUtils.isAnyBlank(name, version)) {
             throw new FrameworkException("类名不能为空");
         }
         String realPath;
         if (class2Path.containsKey(name)) {
             Map<String, String> version2Path = class2Path.get(name);
             // TODO 此处临时解决，需要更好的解决方案
-            if (version2Path.size() == 1) {
+            /*if (version2Path.size() == 1) {
                 realPath = version2Path.values().stream().findFirst().get();
             } else {
                 realPath = version2Path.get(version);
-            }
-            if (StringUtils.isBlank(realPath)) {
+            }*/
+            if (StringUtils.isBlank((realPath = version2Path.get(version)))) {
                 throw new FrameworkException("该类名不存在");
             }
             try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(realPath))) {
@@ -119,12 +118,12 @@ public class ClassAndJarCache {
         } else if (class2Jar.containsKey(name)) {
             Map<String, String> version2Jar = class2Jar.get(name);
             // TODO 此处临时解决，需要更好的解决方案
-            if (version2Jar.size() == 1) {
+            /*if (version2Jar.size() == 1) {
                 realPath = version2Jar.values().stream().findFirst().get();
             } else {
                 realPath = version2Jar.get(version);
-            }
-            if (StringUtils.isBlank(realPath)) {
+            }*/
+            if (StringUtils.isBlank(realPath = version2Jar.get(version))) {
                 throw new FrameworkException("该类名不存在");
             }
             try {
@@ -140,5 +139,49 @@ public class ClassAndJarCache {
         } else {
             throw new FrameworkException("该类名不存在");
         }
+    }
+
+    /**
+     * 通过jar路径读取里面的所有类
+     *
+     * @param jarPath
+     * @return
+     */
+    public Map<String, byte[]> loadJar(String jarPath) {
+        Map<String, byte[]> map = new HashMap<>();
+        try (JarFile jarFile = new JarFile(jarPath)) {
+            jarFile.stream().forEach(entry -> {
+                if (!entry.getName().endsWith(".class")) return;
+                String className = entry.getName()
+                        .replace("/", ".")
+                        .replace(".class", "");
+                try (BufferedInputStream bis = new BufferedInputStream(jarFile.getInputStream(entry))) {
+                    map.put(className, bis.readAllBytes());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            return map;
+        } catch (IOException e) {
+            throw new FrameworkException("读取本地缓存jar包失败");
+        }
+    }
+
+    /**
+     * 通过类名和版本号查找对应的jar路径
+     *
+     * @param classname
+     * @param version
+     * @return
+     */
+    public Optional<String> findJarByClassnameAndVersion(String classname, String version) {
+        if (!class2Jar.containsKey(classname)) {
+            return Optional.empty();
+        }
+        Map<String, String> version2Jar = class2Jar.get(classname);
+        if (!version2Jar.containsKey(version)) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(version2Jar.get(version));
     }
 }
