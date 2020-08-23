@@ -23,6 +23,9 @@ public class PluginDefinitionLoader {
 
     public PluginDefinitionLoader(String basePath, String... otherPaths) {
         scanSelf(otherPaths);
+        if (StringUtils.isBlank(basePath)) {
+            return;
+        }
         FileUtils.listFiles(new File(basePath), new String[]{"jar"}, true)
                 .parallelStream()
                 .forEach(file -> {
