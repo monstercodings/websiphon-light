@@ -9,10 +9,7 @@ import top.codings.websiphon.light.loader.bean.JarDefinition;
 
 import java.io.File;
 import java.net.URL;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
@@ -24,8 +21,8 @@ public class PluginDefinitionLoader {
     private final static String DEFAULT_PACKAGE = "top.codings.websiphon.light";
     private Map<JarDefinition, Object> definitions = new ConcurrentHashMap<>();
 
-    public PluginDefinitionLoader(String basePath) {
-        scanSelf();
+    public PluginDefinitionLoader(String basePath, String... otherPaths) {
+        scanSelf(otherPaths);
         FileUtils.listFiles(new File(basePath), new String[]{"jar"}, true)
                 .parallelStream()
                 .forEach(file -> {
@@ -76,7 +73,14 @@ public class PluginDefinitionLoader {
                 });
     }
 
-    private void scanSelf() {
+    private void scanSelf(String[] otherPaths) {
+        String[] scanPaths;
+        if (otherPaths.length > 0) {
+            scanPaths = Arrays.copyOf(otherPaths, otherPaths.length + 1);
+        } else {
+            scanPaths = new String[1];
+        }
+        scanPaths[scanPaths.length - 1] = DEFAULT_PACKAGE;
         WebsiphonClassLoader classLoader = new WebsiphonClassLoader(new URL[0]);
         JarDefinition jarDefinition = new JarDefinition(
                 "内置插件库",
@@ -89,7 +93,7 @@ public class PluginDefinitionLoader {
         );
         jarDefinition.setInner(true);
         List<ClassDefinition> classDefinitions = new LinkedList<>();
-        for (Class<?> clazz : classLoader.findClassByConditionality(new String[]{DEFAULT_PACKAGE}, PluginDefinition.class)) {
+        for (Class<?> clazz : classLoader.findClassByConditionality(scanPaths, PluginDefinition.class)) {
             PluginDefinition pluginDefinition = clazz.getAnnotation(PluginDefinition.class);
             ClassDefinition classDefinition = new ClassDefinition(
                     pluginDefinition.name(),
