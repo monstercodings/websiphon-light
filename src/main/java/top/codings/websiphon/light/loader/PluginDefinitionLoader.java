@@ -55,7 +55,7 @@ public class PluginDefinitionLoader {
                             return;
                         }
                         JarDefinition jarDefinition = new JarDefinition(
-                                name, version, description, author, homepage, file.getAbsolutePath());
+                                name, version, description, author, homepage, packaging, file.getAbsolutePath());
                         List<ClassDefinition> classDefinitions = new LinkedList<>();
                         for (Class<?> clazz : classLoader.findClassByConditionality(new String[]{packaging}, PluginDefinition.class)) {
                             PluginDefinition pluginDefinition = clazz.getAnnotation(PluginDefinition.class);
@@ -84,6 +84,7 @@ public class PluginDefinitionLoader {
                 "官方组件内提供的开箱即用的各类组件库",
                 "何好听",
                 "https://www.codings.top",
+                DEFAULT_PACKAGE,
                 null
         );
         jarDefinition.setInner(true);
