@@ -129,6 +129,7 @@ public class BaseCrawler extends CombineCrawler {
             }
             begin = true;
         }
+        Optional.ofNullable(config.getShutdownHook()).ifPresent(action -> action.accept(this.wrapper()));
         CompletableFuture<ICrawler> completableFuture = CompletableFuture.completedFuture(this.wrapper());
         boolean force = true;
         IRequester requester = getRequester();
@@ -140,23 +141,6 @@ public class BaseCrawler extends CombineCrawler {
                 completableFuture = completableFuture.thenCombineAsync(((QueueResponseHandler) responseHandler).shutdown(force), (crawler, iResponseHandler) -> crawler);
             }
         }
-        CountDownLatch latch = new CountDownLatch(1);
-        completableFuture.whenCompleteAsync((crawler, throwable) -> latch.countDown());
-        // TODO 未来看看有没有更好的解决方案
-        Runnable runnable = () -> {
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            Optional.ofNullable(config.getShutdownHook()).ifPresent(action -> action.accept(this.wrapper()));
-        };
-        if (Thread.currentThread().isInterrupted()) {
-            new Thread(runnable).start();
-        } else {
-            runnable.run();
-        }
-
         stop = true;
         begin = false;
         return completableFuture;
