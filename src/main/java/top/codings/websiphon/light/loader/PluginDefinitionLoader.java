@@ -14,15 +14,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
 @Slf4j
 public class PluginDefinitionLoader {
     private final static Object NULL = new Object();
+    private final static String DEFAULT_PACKAGE = "top.codings.websiphon.light";
     private Map<JarDefinition, Object> definitions = new ConcurrentHashMap<>();
 
     public PluginDefinitionLoader(String basePath) {
+        scanSelf();
         FileUtils.listFiles(new File(basePath), new String[]{"jar"}, true)
                 .parallelStream()
                 .forEach(file -> {
@@ -32,38 +35,72 @@ public class PluginDefinitionLoader {
                                         new URL("file://" + file.getAbsolutePath())
                                 }
                         );
-                        String p;
+                        String name;
+                        String version;
+                        String description;
+                        String author;
+                        String homepage;
+                        String packaging;
                         try (JarFile jarFile = new JarFile(file)) {
                             Manifest manifest = jarFile.getManifest();
-                            p = manifest.getMainAttributes().getValue("package");
+                            Attributes attributes = manifest.getMainAttributes();
+                            name = attributes.getValue("naming");
+                            version = attributes.getValue("version");
+                            description = attributes.getValue("desc");
+                            author = attributes.getValue("author");
+                            homepage = attributes.getValue("homepage");
+                            packaging = attributes.getValue("packaging");
                         }
-                        if (StringUtils.isBlank(p)) {
+                        if (StringUtils.isBlank(packaging)) {
                             return;
                         }
-                        JarDefinition jarDefinition = new JarDefinition();
-                        definitions.put(jarDefinition, NULL);
+                        JarDefinition jarDefinition = new JarDefinition(
+                                name, version, description, author, homepage, file.getAbsolutePath());
                         List<ClassDefinition> classDefinitions = new LinkedList<>();
-                        for (Class<?> clazz : classLoader.findClassByConditionality(new String[]{p}, PluginDefinition.class)) {
+                        for (Class<?> clazz : classLoader.findClassByConditionality(new String[]{packaging}, PluginDefinition.class)) {
                             PluginDefinition pluginDefinition = clazz.getAnnotation(PluginDefinition.class);
-                            if (pluginDefinition.primary()) {
-                                jarDefinition.setName(pluginDefinition.name());
-                                jarDefinition.setDescription(pluginDefinition.description());
-                                jarDefinition.setVersion(pluginDefinition.version());
-                                jarDefinition.setFullPath(file.getAbsolutePath());
-                            } else {
-                                ClassDefinition classDefinition = new ClassDefinition();
-                                classDefinition.setName(pluginDefinition.name());
-                                classDefinition.setDescription(pluginDefinition.description());
-                                classDefinition.setClassName(clazz.getName());
-                                classDefinition.setJarDefinition(jarDefinition);
-                                classDefinitions.add(classDefinition);
-                            }
+                            ClassDefinition classDefinition = new ClassDefinition(
+                                    pluginDefinition.name(),
+                                    clazz.getName(),
+                                    pluginDefinition.description(),
+                                    pluginDefinition.type(),
+                                    jarDefinition
+                            );
+                            classDefinitions.add(classDefinition);
                         }
                         jarDefinition.setClassDefinitions(classDefinitions.toArray(new ClassDefinition[0]));
+                        definitions.put(jarDefinition, NULL);
                     } catch (Exception e) {
                         log.error("扫描Jar包失败", e);
                     }
                 });
+    }
+
+    private void scanSelf() {
+        WebsiphonClassLoader classLoader = new WebsiphonClassLoader(new URL[0]);
+        JarDefinition jarDefinition = new JarDefinition(
+                "内置插件库",
+                "0.0.1",
+                "官方组件内提供的开箱即用的各类组件库",
+                "何好听",
+                "https://www.codings.top",
+                null
+        );
+        jarDefinition.setInner(true);
+        List<ClassDefinition> classDefinitions = new LinkedList<>();
+        for (Class<?> clazz : classLoader.findClassByConditionality(new String[]{DEFAULT_PACKAGE}, PluginDefinition.class)) {
+            PluginDefinition pluginDefinition = clazz.getAnnotation(PluginDefinition.class);
+            ClassDefinition classDefinition = new ClassDefinition(
+                    pluginDefinition.name(),
+                    clazz.getName(),
+                    pluginDefinition.description(),
+                    pluginDefinition.type(),
+                    jarDefinition
+            );
+            classDefinitions.add(classDefinition);
+        }
+        jarDefinition.setClassDefinitions(classDefinitions.toArray(new ClassDefinition[0]));
+        definitions.put(jarDefinition, NULL);
     }
 
     public Collection<JarDefinition> getDefinitions() {

@@ -1,5 +1,7 @@
 package top.codings.websiphon.light.loader.anno;
 
+import top.codings.websiphon.light.loader.bean.PluginType;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -9,7 +11,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PluginDefinition {
     /**
-     * 是否为整体Jar包描述对象
+     * 是否为默认
      *
      * @return
      */
@@ -36,4 +38,10 @@ public @interface PluginDefinition {
      * @return
      */
     String version() default "";
+
+    /**
+     * 该类对应的类型
+     * @return
+     */
+    PluginType type();
 }

@@ -30,7 +30,8 @@ import org.apache.http.util.CharsetUtils;
 import org.apache.http.util.EntityUtils;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
+import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
@@ -46,6 +47,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
+@PluginDefinition(name = "Apache请求器", description = "基于Apache的Httpclient定制化的请求器，支持Apache httpclient的特性", version = "0.0.1", type = PluginType.REQUESTER)
 public class ApacheRequester extends CombineRequester<ApacheRequest> {
     private String contentTypePattern = "([a-z]+/[^;\\.]+);?\\s?(charset=)?(.*)";
     private Pattern pattern = Pattern.compile(contentTypePattern, Pattern.CASE_INSENSITIVE);

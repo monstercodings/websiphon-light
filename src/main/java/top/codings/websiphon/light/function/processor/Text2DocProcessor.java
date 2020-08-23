@@ -7,13 +7,14 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.io.IOException;
 
 @Slf4j
 @NoArgsConstructor
-@PluginDefinition(name = "文档化处理器", description = "将网页内容文档化", version = "0.0.1")
+@PluginDefinition(name = "文档化处理器", description = "将网页内容文档化", version = "0.0.1", type = PluginType.PROCESSOR)
 public class Text2DocProcessor extends AbstractProcessor<String> {
     @Override
     protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {

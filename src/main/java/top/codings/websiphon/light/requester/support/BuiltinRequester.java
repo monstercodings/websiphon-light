@@ -9,6 +9,8 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
@@ -31,6 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
+@PluginDefinition(name = "内置请求器", description = "基于JDK14内置的Http请求器定制化而成，特点是使用简单方便，但是可配置选项较少", version = "0.0.1", type = PluginType.REQUESTER)
 public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     @Setter
     @Getter
