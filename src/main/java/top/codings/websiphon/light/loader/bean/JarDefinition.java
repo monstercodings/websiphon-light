@@ -1,10 +1,12 @@
 package top.codings.websiphon.light.loader.bean;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Setter
 @Getter
+@NoArgsConstructor
 public class JarDefinition {
     private String name;
     private String version;
