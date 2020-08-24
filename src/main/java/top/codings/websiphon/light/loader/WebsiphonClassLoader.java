@@ -36,7 +36,7 @@ public class WebsiphonClassLoader extends URLClassLoader {
                     continue;
                 }
                 String packagePath = packageName.replace(".", "/");
-                findClasses(annotationClass, classes, packagePath, getParent().getResources(packagePath));
+                findClasses(annotationClass, classes, packagePath, this.getClass().getClassLoader().getResources(packagePath));
                 findClasses(annotationClass, classes, packagePath, getResources(packagePath));
             }
             return classes.keySet().toArray(new Class<?>[0]);
@@ -47,11 +47,17 @@ public class WebsiphonClassLoader extends URLClassLoader {
     }
 
     private void findClasses(Class<? extends Annotation> annotationClass, Map<Class<?>, Object> classes, String packagePath, Enumeration<URL> enumeration) throws IOException {
+        if (enumeration.hasMoreElements() && log.isTraceEnabled()) {
+            log.trace("当前扫描包 -> {}", packagePath.replace("/", "."));
+        }
         while (enumeration.hasMoreElements()) {
             URL url = enumeration.nextElement();
             String protocol = url.getProtocol();
             if (protocol.equalsIgnoreCase("jar")) {
                 try (JarFile jarFile = ((JarURLConnection) url.openConnection()).getJarFile()) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("Jar包名称 -> {}", jarFile.getName());
+                    }
                     jarFile.stream().parallel()
                             .filter(entry -> entry.getName().endsWith(".class") && entry.getName().startsWith(packagePath))
                             .forEach(entry -> {
@@ -92,6 +98,15 @@ public class WebsiphonClassLoader extends URLClassLoader {
             }
         } catch (Exception e) {
             log.error("无法找到该类 -> {}", className, e);
+        }
+    }
+
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        try {
+            return this.getClass().getClassLoader().loadClass(name);
+        } catch (ClassNotFoundException e) {
+            return super.findClass(name);
         }
     }
 }
