@@ -36,7 +36,7 @@ public class WebsiphonClassLoader extends URLClassLoader {
                     continue;
                 }
                 String packagePath = packageName.replace(".", "/");
-                findClasses(annotationClass, classes, packagePath, this.getClass().getClassLoader().getResources(packagePath));
+//                findClasses(annotationClass, classes, packagePath, this.getClass().getClassLoader().getResources(packagePath));
                 findClasses(annotationClass, classes, packagePath, getResources(packagePath));
             }
             return classes.keySet().toArray(new Class<?>[0]);

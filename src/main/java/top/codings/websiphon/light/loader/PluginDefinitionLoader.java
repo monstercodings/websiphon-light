@@ -32,7 +32,7 @@ public class PluginDefinitionLoader {
                     try {
                         WebsiphonClassLoader classLoader = new WebsiphonClassLoader(
                                 new URL[]{
-                                        new URL("file://" + file.getAbsolutePath())
+                                        file.toURI().toURL()
                                 }
                         );
                         String name;
