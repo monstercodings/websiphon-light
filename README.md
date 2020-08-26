@@ -1,7 +1,7 @@
 # 轻量化的爬虫框架
 
 > 属于websiphon的轻量化版本  
-> 当前版本 0.0.83
+> 当前版本 0.0.84
 
 ### 简要介绍
 
@@ -30,7 +30,7 @@
             }
     );
     crawler.startup();
-    crawler.push("https://www.baidu111.com");
+    crawler.push("https://www.baidu.com");
     // 主动关闭爬虫
     // crawler.shutdown();
 ```
