@@ -16,7 +16,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <project.reporting.outputEncoding>${project.build.sourceEncoding}</project.reporting.outputEncoding>
         <java.version>11</java.version>
         <skipTests>true</skipTests>
         <maven.javadoc.skip>true</maven.javadoc.skip>
@@ -117,7 +117,7 @@
                         <compilerVersion>${java.version}</compilerVersion>
                         <verbose>true</verbose>
                         <fork>true</fork>
-                        <encoding>UTF-8</encoding>
+                        <encoding>${project.build.sourceEncoding}</encoding>
                     </configuration>
                 </plugin>
             </plugins>
