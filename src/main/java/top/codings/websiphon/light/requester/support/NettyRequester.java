@@ -120,6 +120,12 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
             channelFuture.channel().closeFuture().addListener((ChannelFutureListener) inChannelFuture -> {
                 request.lock();
                 try {
+                    if (request.requestResult == null) {
+                        request.requestResult = new IRequest.RequestResult();
+                        request.requestResult.setSucceed(false);
+                        request.setStatus(IRequest.Status.ERROR);
+                        request.requestResult.setThrowable(new FrameworkException("未知原因通道关闭"));
+                    }
                     cf.completeAsync(() -> request);
                 } finally {
                     request.unlock();
@@ -298,14 +304,21 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     }
 
     private void channelError(NettyRequest request, ChannelFuture future) {
-        request.setStatus(IRequest.Status.ERROR);
-        request.requestResult = new IRequest.RequestResult();
-        request.requestResult.setSucceed(false);
-        request.requestResult.setThrowable(future.cause());
-        if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE && null != responseHandler) {
-            responseHandler.handle(request);
+        request.lock();
+        try {
+            if (request.requestResult == null) {
+                request.setStatus(IRequest.Status.ERROR);
+                request.requestResult = new IRequest.RequestResult();
+                request.requestResult.setSucceed(false);
+                request.requestResult.setThrowable(future.cause());
+                if (getStrategy() == NetworkErrorStrategy.RESPONSE && null != responseHandler) {
+                    responseHandler.handle(request);
+                }
+            }
+            future.channel().close();
+        } finally {
+            request.unlock();
         }
-        future.channel().close();
     }
 
     @Override
