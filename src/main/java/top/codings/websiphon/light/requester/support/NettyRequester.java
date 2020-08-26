@@ -126,6 +126,9 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                         request.requestResult.setSucceed(false);
                         request.setStatus(IRequest.Status.ERROR);
                         request.requestResult.setThrowable(new FrameworkException("未知原因通道关闭"));
+                        if (null != responseHandler && getStrategy() == NetworkErrorStrategy.RESPONSE) {
+                            responseHandler.handle(request);
+                        }
                     }
                     cf.completeAsync(() -> request);
                 } finally {

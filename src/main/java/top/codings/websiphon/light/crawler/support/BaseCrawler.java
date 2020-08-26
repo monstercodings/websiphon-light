@@ -11,10 +11,10 @@ import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.CombineRequester;
+import top.codings.websiphon.light.requester.support.NettyRequester;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 
 @Slf4j
 public class BaseCrawler extends CombineCrawler {
@@ -26,15 +26,36 @@ public class BaseCrawler extends CombineCrawler {
         this(config, null);
     }
 
+    public BaseCrawler(IResponseHandler responseHandler) {
+        this(null, responseHandler);
+    }
     public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler) {
         this(config, responseHandler, null);
     }
 
     public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler, CombineRequester requester) {
+        if (config == null) {
+            config= CrawlerConfig.builder().build();
+        }
         if (config.getMaxConcurrentProcessing() <= 0) {
             config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors() + 1);
         }
-        this.config = config;
+        if (null == requester) {
+            if (StringUtils.isBlank(config.getRequesterClass())) {
+                requester = new NettyRequester();
+            } else {
+                CombineRequester combineRequester = (CombineRequester) IRequester
+                        .newBuilder(config)
+                        .responseHandler(responseHandler)
+                        .build();
+                requester = combineRequester;
+            }
+        } else {
+            requester.setResponseHandler(responseHandler);
+            if (requester.getStrategy() == null) {
+                requester.setStrategy(config.getNetworkErrorStrategy());
+            }
+        }
         if (null == responseHandler && StringUtils.isNotBlank(config.getResponseHandlerImplClass())) {
             try {
                 // 初始化响应处理器
@@ -49,20 +70,10 @@ public class BaseCrawler extends CombineCrawler {
         }
         if (null != responseHandler) {
             responseHandler.setConfig(config);
+            requester.setResponseHandler(responseHandler);
         }
         this.responseHandler = responseHandler;
-        if (null == requester) {
-            CombineRequester combineRequester = (CombineRequester) IRequester
-                    .newBuilder(config)
-                    .responseHandler(responseHandler)
-                    .build();
-            requester = combineRequester;
-        } else {
-            requester.setResponseHandler(responseHandler);
-            if (requester.getStrategy() == null) {
-                requester.setStrategy(config.getNetworkErrorStrategy());
-            }
-        }
+        this.config = config;
         setRequester(requester);
     }
 

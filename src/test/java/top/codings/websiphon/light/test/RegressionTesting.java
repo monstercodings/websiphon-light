@@ -2,19 +2,34 @@ package top.codings.websiphon.light.test;
 
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
-import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
+import top.codings.websiphon.light.function.handler.AbstractResponseHandler;
+import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.ApacheRequester;
-import top.codings.websiphon.light.requester.support.BuiltinRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
-import top.codings.websiphon.light.test.dependent.DoNothingRequester;
 import top.codings.websiphon.light.test.dependent.TestResponseHandler;
 
 public class RegressionTesting {
     public static void main(String[] args) throws Exception {
-        test1();
+        demo();
+//        test1();
+    }
+
+    public static void demo() throws Exception {
+        ICrawler crawler = new BaseCrawler(
+                new AbstractResponseHandler() {
+                    @Override
+                    public void handle(IRequest request) {
+                        // 此处写响应处理逻辑
+                    }
+                }
+        );
+        crawler.startup();
+        crawler.push("https://www.baidu111.com");
+        // 主动关闭爬虫
+        // crawler.shutdown();
     }
 
     public static void test1() throws InterruptedException {

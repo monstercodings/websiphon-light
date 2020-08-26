@@ -15,9 +15,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * 处理器链的响应处理器
  */
 @Slf4j
-public abstract class ChainResponseHandler implements QueueResponseHandler {
+public abstract class ChainResponseHandler extends AbstractResponseHandler implements QueueResponseHandler {
     private final static String NAME = "处理链";
-    protected CrawlerConfig config;
     private ExecutorService exe;
     private LinkedTransferQueue<IRequest> queue;
     private Semaphore token;
@@ -120,11 +119,6 @@ public abstract class ChainResponseHandler implements QueueResponseHandler {
     public void handle(IRequest request) {
         normal = false;
         queue.offer(request);
-    }
-
-    @Override
-    public void setConfig(CrawlerConfig config) {
-        this.config = config;
     }
 
     @Override
