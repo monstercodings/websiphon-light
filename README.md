@@ -21,16 +21,16 @@
 > 只需极少代码即可启动一个爬虫
 
 ```java
-    ICrawler crawler = new BaseCrawler(
-            new AbstractResponseHandler() {
-                @Override
-                public void handle(IRequest request) {
-                    // 此处写响应处理逻辑
-                }
+ICrawler crawler = new BaseCrawler(
+        new AbstractResponseHandler() {
+            @Override
+            public void handle(IRequest request) {
+                // 此处写响应处理逻辑
             }
-    );
-    crawler.startup();
-    crawler.push("https://www.baidu.com");
-    // 主动关闭爬虫
-    // crawler.shutdown();
+        }
+);
+crawler.startup();
+crawler.push("https://www.baidu.com");
+// 主动关闭爬虫
+// crawler.shutdown();
 ```
