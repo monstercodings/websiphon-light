@@ -23,7 +23,12 @@ public class ApacheRequest extends BaseRequest<HttpRequestBase> {
 
     @Override
     public void setHeaders(Map<String, Object> headers) {
-        headers.forEach((s, o) -> httpRequest.setHeader(s, o.toString()));
+        headers.forEach((s, o) -> {
+            if (httpRequest.containsHeader(s)) {
+                return;
+            }
+            httpRequest.setHeader(s, o.toString());
+        });
     }
 
     @Override

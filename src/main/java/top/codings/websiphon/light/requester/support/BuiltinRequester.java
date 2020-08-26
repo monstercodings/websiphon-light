@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
+import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
@@ -27,43 +28,55 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-@PluginDefinition(name = "内置请求器", description = "基于JDK14内置的Http请求器定制化而成，特点是使用简单方便，但是可配置选项较少", version = "0.0.1", type = PluginType.REQUESTER)
+@PluginDefinition(name = "内置请求器", description = "基于JDK11内置的Http请求器定制化而成，特点是使用简单方便，但是可配置选项较少", version = "0.0.1", type = PluginType.REQUESTER)
 public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     @Setter
     @Getter
     private IResponseHandler responseHandler;
     private HttpClient client;
-    private ExecutorService executorService;
+    private RequesterConfig config;
 
     private String contentTypePattern = "([a-z]+/[^;\\.]+);?\\s?(charset=)?(.*)";
     private Pattern pattern = Pattern.compile(contentTypePattern, Pattern.CASE_INSENSITIVE);
 
     public BuiltinRequester() {
+        this(null);
+    }
+
+    public BuiltinRequester(RequesterConfig config) {
         super(null);
+        if (config == null) {
+            config = RequesterConfig.builder()
+                    .connectTimeoutMillis(30000)
+                    .idleTimeMillis(30000)
+                    .ignoreSslError(false)
+                    .networkErrorStrategy(NetworkErrorStrategy.RESPONSE)
+                    .maxContentLength(Integer.MAX_VALUE)
+                    .build();
+        }
+        setStrategy(config.getNetworkErrorStrategy());
+        this.config = config;
     }
 
     @Override
     public CompletableFuture<IRequester> init() {
         try {
-            SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
-            sslContext.init(null, BuiltinTrustManager.get(), null);
-//            executorService = Executors.newSingleThreadExecutor();
-            client = HttpClient.newBuilder()
-//                    .executor(executorService)
-                    .connectTimeout(Duration.ofSeconds(6))
-//                    .version(HttpClient.Version.HTTP_1_1)
-                    .followRedirects(HttpClient.Redirect.NORMAL)
-                    .sslContext(sslContext)
-                    .sslParameters(new SSLParameters())
-                    //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
-//                                    .authenticator(Authenticator.getDefault())
-                    .build();
+            HttpClient.Builder builder = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()))
+                    .followRedirects(HttpClient.Redirect.NORMAL);
+            if (config.isIgnoreSslError()) {
+                SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
+                sslContext.init(null, BuiltinTrustManager.get(), null);
+                builder.sslContext(sslContext)
+                        .sslParameters(new SSLParameters());
+            }
+            //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
+//                                    .authenticator(Authenticator.getDefault());
+            client = builder.build();
         } catch (Exception e) {
             return CompletableFuture.failedFuture(new FrameworkException("初始化请求器失败", e));
         }
@@ -200,17 +213,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
 
     @Override
     public CompletableFuture<IRequester> shutdown(boolean force) {
-        return CompletableFuture.supplyAsync(() -> {
-            if (null != executorService) {
-                if (force) executorService.shutdownNow();
-                else executorService.shutdown();
-                try {
-                    executorService.awaitTermination(1, TimeUnit.MINUTES);
-                } catch (InterruptedException e) {
-                }
-            }
-            return this;
-        });
+        return CompletableFuture.supplyAsync(() -> this);
     }
 
     @Override

@@ -23,11 +23,13 @@ import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.impl.client.DefaultClientConnectionReuseStrategy;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import org.apache.http.util.EntityUtils;
+import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
@@ -49,24 +51,35 @@ import java.util.regex.Pattern;
 @Slf4j
 @PluginDefinition(name = "Apache请求器", description = "基于Apache的Httpclient定制化的请求器，支持Apache httpclient的特性", version = "0.0.1", type = PluginType.REQUESTER)
 public class ApacheRequester extends CombineRequester<ApacheRequest> {
-    private String contentTypePattern = "([a-z]+/[^;\\.]+);?\\s?(charset=)?(.*)";
-    private Pattern pattern = Pattern.compile(contentTypePattern, Pattern.CASE_INSENSITIVE);
     @Getter
     @Setter
     private IResponseHandler responseHandler;
+    private RequesterConfig config;
 
-    private boolean redirect;
+    private String contentTypePattern = "([a-z]+/[^;\\.]+);?\\s?(charset=)?(.*)";
+    private Pattern pattern = Pattern.compile(contentTypePattern, Pattern.CASE_INSENSITIVE);
     private CloseableHttpAsyncClient client;
-    private RequestConfig config;
+    private RequestConfig requestConfig;
     private Registry<InputStreamFactory> decoderRegistry;
 
     public ApacheRequester() {
-        this(false);
+        this(null);
     }
 
-    public ApacheRequester(boolean redirect) {
+    public ApacheRequester(RequesterConfig config) {
         super(null);
-        this.redirect = redirect;
+        if (config == null) {
+            config = RequesterConfig.builder()
+                    .connectTimeoutMillis(30000)
+                    .idleTimeMillis(30000)
+                    .maxContentLength(Integer.MAX_VALUE)
+                    .networkErrorStrategy(NetworkErrorStrategy.RESPONSE)
+                    .ignoreSslError(false)
+                    .redirect(false)
+                    .build();
+        }
+        setStrategy(config.getNetworkErrorStrategy());
+        this.config = config;
     }
 
     @Override
@@ -77,44 +90,27 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                     .register("x-gzip", GZIPInputStreamFactory.getInstance())
                     .register("deflate", DeflateInputStreamFactory.getInstance())
                     .build();
-            config = RequestConfig
+            requestConfig = RequestConfig
                     .custom()
                     .setContentCompressionEnabled(true)
-                    .setRedirectsEnabled(redirect)
-                    .setRelativeRedirectsAllowed(redirect)
+                    .setRedirectsEnabled(config.isRedirect())
+                    .setRelativeRedirectsAllowed(config.isRedirect())
                     .setCircularRedirectsAllowed(false)
                     .build();
-            client = HttpAsyncClients
+            HttpAsyncClientBuilder httpAsyncClientBuilder = HttpAsyncClients
                     .custom()
-                    .setSSLStrategy(new SSLIOSessionStrategy(
-                            SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build(),
-                            (hostname, session) -> true)
-                    )
                     .setConnectionReuseStrategy(DefaultClientConnectionReuseStrategy.INSTANCE)
-//                    .addInterceptorLast(new RequestAcceptEncoding())
-                    /*.addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
-
-                        ApacheRequest req = (ApacheRequest) context.getAttribute("webRequest");
-
-                        req.headers().forEach(request::setHeader);
-                        if (!request.containsHeader("referer")) {
-                            request.addHeader("referer", req.uri());
-                        }
-                    })
-                    .addInterceptorLast((HttpResponseInterceptor) (response, context) -> {
-                        WebRequest webRequest = (WebRequest) context.getAttribute("webRequest");
-                        int code = response.getStatusLine().getStatusCode();
-                        if (code >= 300 && code < 400) {
-                            webRequest.response().setRedirect(true);
-                            Optional.ofNullable(response.getFirstHeader("Location")).ifPresent(header -> webRequest.response().setRedirectUrl(HttpOperator.recombineLink(header.getValue(), webRequest.uri())));
-                        }
-                    })*/
-                    //                .addInterceptorLast(new ResponseContentEncoding())
                     .disableCookieManagement()
-                    .setDefaultRequestConfig(config)
+                    .setDefaultRequestConfig(requestConfig)
                     .setMaxConnPerRoute(Integer.MAX_VALUE)
-                    .setMaxConnTotal(Integer.MAX_VALUE)
-                    .build();
+                    .setMaxConnTotal(Integer.MAX_VALUE);
+            if (config.isIgnoreSslError()) {
+                httpAsyncClientBuilder.setSSLStrategy(new SSLIOSessionStrategy(
+                        SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build(),
+                        (hostname, session) -> true)
+                );
+            }
+            client = httpAsyncClientBuilder.build();
             client.start();
         } catch (Exception e) {
 //            log.error("初始化请求器失败", e);
@@ -129,10 +125,10 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
         HttpClientContext context = HttpClientContext.create();
 //        context.setAttribute("webRequest", request);
         RequestConfig.Builder builder = RequestConfig
-                .copy(config)
-                .setSocketTimeout(6000)
-                .setConnectTimeout(6000)
-                .setConnectionRequestTimeout(6000);
+                .copy(requestConfig)
+                .setSocketTimeout(config.getConnectTimeoutMillis())
+                .setConnectTimeout(config.getConnectTimeoutMillis())
+                .setConnectionRequestTimeout(config.getIdleTimeMillis());
         // TODO 此处支持代理
         /*WebProxy proxy = httpRequest.getProxy();
         if (proxy != null && proxy != WebProxy.NO_PROXY) {

@@ -32,19 +32,13 @@ public class TestResponseHandler extends StatResponseHandler {
                 if (log.isDebugEnabled()) {
                     log.debug("关闭处理器");
                 }
-                try {
-                    TimeUnit.SECONDS.sleep(20);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                if (log.isDebugEnabled()) {
-                    log.debug("休眠结束");
-                }
             }
 
             @Override
             protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
-                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), (data.length() > 20 ? data.substring(0, 20) : data));
+                String content = data.length() > 20 ? data.substring(0, 20) : data;
+//                content = data;
+                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), content);
                 return data;
             }
         }

@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.ssl.SSLContextBuilder;
+import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
@@ -44,7 +45,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     private Bootstrap bootstrap;
     private NioEventLoopGroup workerGroup;
     private SSLContext sslContext;
-    private NettyConfig config;
+    private RequesterConfig config;
     @Getter
     @Setter
     private IResponseHandler responseHandler;
@@ -53,15 +54,15 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         this(null, null);
     }
 
-    public NettyRequester(NettyConfig config) {
+    public NettyRequester(RequesterConfig config) {
         this(null, config);
 
     }
 
-    protected NettyRequester(CombineRequester requester, NettyConfig config) {
+    protected NettyRequester(CombineRequester requester, RequesterConfig config) {
         super(requester);
         if (config == null) {
-            config = NettyConfig.builder()
+            config = RequesterConfig.builder()
                     .connectTimeoutMillis(6000)
                     .idleTimeMillis(6000)
                     .ignoreSslError(false)
@@ -69,8 +70,8 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                     .networkErrorStrategy(NetworkErrorStrategy.RESPONSE)
                     .build();
         }
-        this.config = config;
         setStrategy(config.getNetworkErrorStrategy());
+        this.config = config;
     }
 
     @Override
@@ -357,29 +358,29 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         return completableFuture;
     }
 
-    @Getter
-    @Builder
-    public static class NettyConfig {
-        /**
-         * 连接超时时间
-         */
-        private int connectTimeoutMillis;
-        /**
-         * 传输超时设定
-         */
-        private int idleTimeMillis;
-        /**
-         * 是否忽略ssl错误
-         */
-        private boolean ignoreSslError;
-        /**
-         * 最大允许接受的响应长度
-         */
-        private int maxContentLength;
-        /**
-         * 网络异常时的请求对象的处理策略
-         */
-        private IRequester.NetworkErrorStrategy networkErrorStrategy;
-    }
+//    @Getter
+//    @Builder
+//    public static class NettyConfig {
+//        /**
+//         * 连接超时时间
+//         */
+//        private int connectTimeoutMillis;
+//        /**
+//         * 传输超时设定
+//         */
+//        private int idleTimeMillis;
+//        /**
+//         * 是否忽略ssl错误
+//         */
+//        private boolean ignoreSslError;
+//        /**
+//         * 最大允许接受的响应长度
+//         */
+//        private int maxContentLength;
+//        /**
+//         * 网络异常时的请求对象的处理策略
+//         */
+//        private IRequester.NetworkErrorStrategy networkErrorStrategy;
+//    }
 
 }

@@ -24,7 +24,12 @@ public class NettyRequest extends BaseRequest<HttpRequest> {
 
     @Override
     public void setHeaders(Map<String, Object> headers) {
-        headers.forEach((s, o) -> httpRequest.headers().set(s, o));
+        headers.forEach((s, o) -> {
+            if (httpRequest.headers().contains(s)) {
+                return;
+            }
+            httpRequest.headers().set(s, o);
+        });
     }
 
     @Override

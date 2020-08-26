@@ -13,6 +13,8 @@ import top.codings.websiphon.light.requester.IRequester;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 
+import static top.codings.websiphon.light.requester.IRequest.Status.*;
+
 @Slf4j
 public class RateLimitRequester extends CombineRequester<IRequest> {
     private final static String NAME = "并发限制请求器";
@@ -75,7 +77,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                         }
                         // 将标记位恢复
                         normal = true;
-                        request.setStatus(IRequest.Status.REQUEST);
+                        request.setStatus(REQUEST);
                         Inner inner = new Inner(request, taskTimeoutMillis);
                         timeoutQueue.offer(inner);
                         requester.execute(request)
@@ -122,19 +124,17 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                         inner.request.lock();
                         try {
                             IRequest.Status status = inner.request.getStatus();
-                            switch (status) {
-                                case WAIT, READY, REQUEST -> {
-                                    if (null != timeoutHandler) {
-                                        try {
-                                            timeoutHandler.accept(inner.request, crawler.wrapper());
-                                        } catch (Exception e) {
-                                            log.error("请求对象超时处理失败", e);
-                                        }
+                            if (status == WAIT || status == READY || status == REQUEST) {
+                                if (null != timeoutHandler) {
+                                    try {
+                                        timeoutHandler.accept(inner.request, crawler.wrapper());
+                                    } catch (Exception e) {
+                                        log.error("请求对象超时处理失败", e);
                                     }
-//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
-                                    inner.request.setStatus(IRequest.Status.TIMEOUT);
-//                                inner.request.release();
                                 }
+//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
+                                inner.request.setStatus(IRequest.Status.TIMEOUT);
+//                                inner.request.release();
                             }
                         } finally {
                             inner.request.unlock();
@@ -168,9 +168,9 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
     @Override
     public CompletableFuture<IRequest> execute(IRequest request) {
         normal = false;
-        request.setStatus(IRequest.Status.READY);
+        request.setStatus(READY);
         return CompletableFuture.supplyAsync(() -> {
-            request.setStatus(IRequest.Status.WAIT);
+            request.setStatus(WAIT);
             queue.offer(request);
             return request;
         });
