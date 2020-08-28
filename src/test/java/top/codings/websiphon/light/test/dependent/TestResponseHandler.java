@@ -38,7 +38,7 @@ public class TestResponseHandler extends StatResponseHandler {
             protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
                 String content = data.length() > 20 ? data.substring(0, 20) : data;
 //                content = data;
-                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), content);
+//                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), content);
                 return data;
             }
         }

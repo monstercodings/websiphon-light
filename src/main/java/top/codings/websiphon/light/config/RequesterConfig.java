@@ -28,6 +28,16 @@ public class RequesterConfig {
      */
     private int maxContentLength;
     /**
+     * 上传限速
+     * 单位字节
+     */
+    private int uploadBytesPerSecond;
+    /**
+     * 下载限速
+     * 单位字节
+     */
+    private int downloadBytesPerSecond;
+    /**
      * 网络异常时的请求对象的处理策略
      */
     private IRequester.NetworkErrorStrategy networkErrorStrategy;

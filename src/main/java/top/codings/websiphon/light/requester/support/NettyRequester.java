@@ -12,9 +12,9 @@ import io.netty.handler.codec.http.*;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.handler.traffic.GlobalTrafficShapingHandler;
+import io.netty.handler.traffic.TrafficCounter;
 import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -37,14 +37,22 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-@PluginDefinition(name = "Netty请求器", description = "基于Netty4而定制化开发的请求器，具备效率高，内存占用少，配置丰富的特点", version = "0.0.1", type = PluginType.REQUESTER)
+@PluginDefinition(
+        name = "Netty请求器",
+        description = "基于Netty4而定制化开发的请求器，具备效率高，内存占用少，配置丰富，可限制上传下载速度等特点",
+        version = "0.0.1",
+        type = PluginType.REQUESTER)
 public class NettyRequester extends CombineRequester<NettyRequest> {
     private Bootstrap bootstrap;
     private NioEventLoopGroup workerGroup;
     private SSLContext sslContext;
+    private ScheduledExecutorService executor;
+    private GlobalTrafficShapingHandler trafficHandler;
     private RequesterConfig config;
     @Getter
     @Setter
@@ -72,6 +80,19 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         }
         setStrategy(config.getNetworkErrorStrategy());
         this.config = config;
+        executor = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
+        trafficHandler = new GlobalTrafficShapingHandler(executor, config.getUploadBytesPerSecond(), config.getDownloadBytesPerSecond());
+        /*new Thread(() -> {
+            TrafficCounter counter = trafficHandler.trafficCounter();
+            for (; ; ) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                System.out.println(counter.toString());
+            }
+        }).start();*/
     }
 
     @Override
@@ -87,6 +108,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
+                        socketChannel.pipeline().addFirst("@GlobalTrafficShapingHandler", trafficHandler);
                     }
                 })
         ;
@@ -348,17 +370,31 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
 
     @Override
     public CompletableFuture<IRequester> shutdown(boolean force) {
-        CompletableFuture completableFuture = new CompletableFuture();
-        if (workerGroup != null) {
-            workerGroup.shutdownGracefully().addListener((GenericFutureListener<Future<? super Object>>) future -> {
-                sslContext = null;
-                workerGroup = null;
-                completableFuture.completeAsync(() -> this);
-            });
-        } else {
-            completableFuture.complete(this);
-        }
-        return completableFuture;
+        CompletableFuture future1 = CompletableFuture.supplyAsync(() -> {
+            if (null == executor) {
+                return null;
+            }
+            executor.shutdown();
+            try {
+                executor.awaitTermination(1, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+            }
+            return null;
+        });
+        CompletableFuture future2 = CompletableFuture.supplyAsync(() -> {
+            if (workerGroup == null) {
+                return null;
+            }
+            Future f = workerGroup.shutdownGracefully();
+            try {
+                f.await(1, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+            }
+            sslContext = null;
+            workerGroup = null;
+            return null;
+        });
+        return CompletableFuture.allOf(future1, future2).thenApplyAsync(aVoid -> this);
     }
 
 //    @Getter

@@ -13,8 +13,8 @@ import top.codings.websiphon.light.test.dependent.TestResponseHandler;
 
 public class RegressionTesting {
     public static void main(String[] args) throws Exception {
-        demo();
-//        test1();
+//        demo();
+        test1();
     }
 
     public static void demo() throws Exception {
@@ -77,7 +77,9 @@ public class RegressionTesting {
                         (iRequest, c) -> System.out.println("超时弹出")));
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
-            c.push("https://vdash.codings.top:7921");
+            for (int i = 0; i < 1000; i++) {
+                c.push("https://www.baidu.com?a=" + i);
+            }
 //            c.push("http://localhost:8080/header");
         });
 //        Thread.currentThread().join();
