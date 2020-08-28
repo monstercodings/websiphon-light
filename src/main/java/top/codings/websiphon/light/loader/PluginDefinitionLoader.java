@@ -7,13 +7,12 @@ import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.bean.ClassDefinition;
 import top.codings.websiphon.light.loader.bean.JarDefinition;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.jar.Attributes;
 import java.util.jar.JarFile;
-import java.util.jar.Manifest;
 
 @Slf4j
 public class PluginDefinitionLoader {
@@ -41,17 +40,24 @@ public class PluginDefinitionLoader {
                         String author;
                         String homepage;
                         String packaging;
-                        try (JarFile jarFile = new JarFile(file)) {
-                            Manifest manifest = jarFile.getManifest();
-                            Attributes attributes = manifest.getMainAttributes();
-                            name = attributes.getValue("naming");
-                            version = attributes.getValue("version");
-                            description = attributes.getValue("desc");
-                            author = attributes.getValue("author");
-                            homepage = attributes.getValue("homepage");
-                            packaging = attributes.getValue("packaging");
+                        try (JarFile jarFile = new JarFile(file);
+                             BufferedInputStream bis = new BufferedInputStream(
+                                     jarFile.getInputStream(jarFile.getEntry("plugin.properties")))
+                        ) {
+                            Properties properties = new Properties();
+                            properties.load(bis);
+                            name = properties.getProperty("plugin.name");
+                            version = properties.getProperty("plugin.version");
+                            description = properties.getProperty("plugin.desc");
+                            author = properties.getProperty("plugin.author");
+                            homepage = properties.getProperty("plugin.homepage");
+                            packaging = properties.getProperty("plugin.package");
+                        } catch (Exception e) {
+                            log.error("读取Jar包内配置失败 -> {}", file.getAbsolutePath(), e);
+                            return;
                         }
-                        if (StringUtils.isBlank(packaging)) {
+                        if (StringUtils.isAnyBlank(name, version, description, author, packaging)) {
+                            log.warn("jar包plugin.properties信息不完整 -> {}", file.getAbsolutePath());
                             return;
                         }
                         JarDefinition jarDefinition = new JarDefinition(
