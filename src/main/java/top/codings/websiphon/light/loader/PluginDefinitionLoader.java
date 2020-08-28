@@ -13,14 +13,23 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class PluginDefinitionLoader {
-    private final static Object NULL = new Object();
     private final static String DEFAULT_PACKAGE = "top.codings.websiphon.light";
-    private Map<JarDefinition, Object> definitions = new ConcurrentHashMap<>();
+    private Map<String, JarDefinition> definitions = new ConcurrentHashMap<>();
+    private String basePath;
+    private String[] otherPaths;
 
     public PluginDefinitionLoader(String basePath, String... otherPaths) {
+        this.basePath = basePath;
+        this.otherPaths = otherPaths;
+        reScan();
+    }
+
+    public void reScan() {
+        definitions.clear();
         scanSelf(otherPaths);
         if (StringUtils.isBlank(basePath)) {
             return;
@@ -28,12 +37,11 @@ public class PluginDefinitionLoader {
         FileUtils.listFiles(new File(basePath), new String[]{"jar"}, true)
                 .parallelStream()
                 .forEach(file -> {
-                    try {
-                        WebsiphonClassLoader classLoader = new WebsiphonClassLoader(
-                                new URL[]{
-                                        file.toURI().toURL()
-                                }
-                        );
+                    try (WebsiphonClassLoader classLoader = new WebsiphonClassLoader(
+                            new URL[]{
+                                    file.toURI().toURL()
+                            }
+                    )) {
                         String name;
                         String version;
                         String description;
@@ -62,24 +70,39 @@ public class PluginDefinitionLoader {
                         }
                         JarDefinition jarDefinition = new JarDefinition(
                                 name, version, description, author, homepage, packaging, file.getAbsolutePath());
+                        String id = getJarId(jarDefinition);
+                        JarDefinition temp = definitions.putIfAbsent(id, jarDefinition);
+                        if (temp != null) {
+                            log.warn("Jar包重复 -> {} | {}", id, file.getAbsolutePath());
+                            return;
+                        }
                         List<ClassDefinition> classDefinitions = new LinkedList<>();
                         for (Class<?> clazz : classLoader.findClassByConditionality(new String[]{packaging}, PluginDefinition.class)) {
                             PluginDefinition pluginDefinition = clazz.getAnnotation(PluginDefinition.class);
                             ClassDefinition classDefinition = new ClassDefinition(
                                     pluginDefinition.name(),
                                     clazz.getName(),
+                                    jarDefinition.getVersion(),
                                     pluginDefinition.description(),
                                     pluginDefinition.type(),
                                     jarDefinition
                             );
                             classDefinitions.add(classDefinition);
                         }
-                        jarDefinition.setClassDefinitions(classDefinitions.toArray(new ClassDefinition[0]));
-                        definitions.put(jarDefinition, NULL);
+                        jarDefinition.setClassDefinitions(classDefinitions.toArray(ClassDefinition[]::new));
                     } catch (Exception e) {
                         log.error("扫描Jar包失败", e);
                     }
                 });
+    }
+
+    private String getJarId(JarDefinition jarDefinition) {
+        return getJarId(jarDefinition.getPackaging(), jarDefinition.getVersion());
+    }
+
+    private String getJarId(String packaging, String version) {
+        String id = String.join("/", packaging, version);
+        return id;
     }
 
     private void scanSelf(String[] otherPaths) {
@@ -101,12 +124,19 @@ public class PluginDefinitionLoader {
                 null
         );
         jarDefinition.setInner(true);
+        String id = getJarId(jarDefinition);
+        JarDefinition temp = definitions.putIfAbsent(id, jarDefinition);
+        if (temp != null) {
+            log.warn("内置组件定义重复 -> {}", id);
+            return;
+        }
         List<ClassDefinition> classDefinitions = new LinkedList<>();
         for (Class<?> clazz : classLoader.findClassByConditionality(scanPaths, PluginDefinition.class)) {
             PluginDefinition pluginDefinition = clazz.getAnnotation(PluginDefinition.class);
             ClassDefinition classDefinition = new ClassDefinition(
                     pluginDefinition.name(),
                     clazz.getName(),
+                    jarDefinition.getVersion(),
                     pluginDefinition.description(),
                     pluginDefinition.type(),
                     jarDefinition
@@ -114,10 +144,65 @@ public class PluginDefinitionLoader {
             classDefinitions.add(classDefinition);
         }
         jarDefinition.setClassDefinitions(classDefinitions.toArray(new ClassDefinition[0]));
-        definitions.put(jarDefinition, NULL);
+        definitions.put(id, jarDefinition);
     }
 
-    public Collection<JarDefinition> getDefinitions() {
-        return definitions.keySet();
+    /**
+     * 获取扫描到的Jar包
+     *
+     * @return
+     */
+    public Collection<JarDefinition> getJarDefinitions() {
+        return Collections.unmodifiableCollection(definitions.values());
+    }
+
+    /**
+     * 获取所有的定义类
+     *
+     * @return
+     */
+    public Collection<ClassDefinition> getClassDefinitions() {
+        return definitions.values()
+                .parallelStream()
+                .flatMap(jarDefinition -> Arrays.stream(jarDefinition.getClassDefinitions()))
+                .collect(Collectors.toList());
+    }
+
+    public boolean existJar(JarDefinition jarDefinition) {
+        return existJar(jarDefinition.getPackaging(), jarDefinition.getVersion());
+    }
+
+    public boolean existJar(String packaging, String version) {
+        return findJarByPackageAndVersion(packaging, version).isPresent();
+    }
+
+    public boolean existClass(ClassDefinition classDefinition) {
+        return existClass(classDefinition.getClassName(), classDefinition.getVersion());
+    }
+
+    public boolean existClass(String classname, String version) {
+        return findJarByClass(classname, version).isPresent();
+    }
+
+    public Optional<JarDefinition> findJarByPackageAndVersion(String packaging, String version) {
+        return Optional.ofNullable(definitions.get(getJarId(packaging, version)));
+    }
+
+    public Optional<JarDefinition> findJarByClass(String classname, String version) {
+        return definitions.values()
+                .parallelStream()
+                .filter(jarDefinition -> {
+                    boolean exist = StringUtils.equals(version, jarDefinition.getVersion()) &&
+                            classname.startsWith(jarDefinition.getPackaging());
+                    if (exist) {
+                        exist = Arrays.stream(jarDefinition.getClassDefinitions())
+                                .parallel()
+                                .anyMatch(classDefinition ->
+                                        StringUtils.equals(classname, classDefinition.getClassName()) &&
+                                                StringUtils.equals(version, classDefinition.getVersion()));
+                    }
+                    return exist;
+                })
+                .findFirst();
     }
 }

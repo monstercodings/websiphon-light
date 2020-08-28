@@ -8,7 +8,7 @@ public class TestClassLoader {
     @Test
     public void test1() throws Exception {
         PluginDefinitionLoader loader = new PluginDefinitionLoader("data");
-        loader.getDefinitions().parallelStream().forEach(jarDefinition -> {
+        loader.getJarDefinitions().parallelStream().forEach(jarDefinition -> {
             System.out.println(JSON.toJSONString(jarDefinition, true));
         });
         /*File file = new File("data/spider-processor-plugins.jar");

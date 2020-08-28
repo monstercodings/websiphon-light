@@ -10,6 +10,7 @@ import lombok.Setter;
 public class ClassDefinition {
     private String name;
     private String className;
+    private String version;
     private String description;
     private PluginType type;
     private JarDefinition jarDefinition;
