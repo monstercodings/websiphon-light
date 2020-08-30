@@ -10,8 +10,6 @@ import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.io.IOException;
-
 @Slf4j
 @NoArgsConstructor
 @PluginDefinition(name = "文档化处理器", description = "将网页内容文档化", version = "0.0.1", type = PluginType.PROCESSOR)
@@ -40,10 +38,16 @@ public class Text2DocProcessor extends AbstractProcessor<String> {
     }
 
     @Override
-    public void init0(ICrawler crawler) {
+    public void init(ICrawler crawler) throws Exception {
+        if (log.isTraceEnabled()) {
+            log.trace("{}初始化", this.getClass().getSimpleName());
+        }
     }
 
     @Override
-    protected void close0() throws IOException {
+    public void close() throws Exception {
+        if (log.isTraceEnabled()) {
+            log.trace("{}被关闭", this.getClass().getSimpleName());
+        }
     }
 }

@@ -5,11 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.io.Closeable;
-import java.io.IOException;
-
 @Slf4j
-public abstract class AbstractProcessor<T> implements IProcessor, Closeable {
+public abstract class AbstractProcessor<T> implements IProcessor, ProcessInitAware, ProcessCloseAware {
     private TypeParameterMatcher matcher;
     private AbstractProcessor root;
     private AbstractProcessor prev;
@@ -27,25 +24,27 @@ public abstract class AbstractProcessor<T> implements IProcessor, Closeable {
         return processor;
     }
 
-    @Override
-    public void init(ICrawler crawler) {
+    public final void initByHandler(ICrawler crawler) throws Exception {
         AbstractProcessor p;
         for (p = root; p != null; p = p.next) {
-            p.init0(crawler);
+            p.init(crawler);
         }
     }
 
-    protected abstract void init0(ICrawler crawler);
-
     @Override
-    public void close() throws IOException {
+    public void init(ICrawler crawler) throws Exception {
+    }
+
+    public final void closeByHandler() throws Exception {
         AbstractProcessor p;
         for (p = root; p != null; p = p.next) {
-            p.close0();
+            p.close();
         }
     }
 
-    protected abstract void close0() throws IOException;
+    @Override
+    public void close() throws Exception {
+    }
 
     @Override
     public void process(Object o, IRequest request, ICrawler crawler) {

@@ -2,11 +2,13 @@ package top.codings.websiphon.light.function.handler;
 
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.function.processor.IProcessor;
+import top.codings.websiphon.light.function.processor.ProcessCloseAware;
+import top.codings.websiphon.light.function.processor.ProcessInitAware;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -38,7 +40,19 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
 //            log.error("发生异常 -> {}", throwable.getClass());
                 return request;
             });
-            processor.init(crawler);
+            if (processor instanceof AbstractProcessor) {
+                try {
+                    ((AbstractProcessor) processor).initByHandler(crawler);
+                } catch (Exception e) {
+                    throw new FrameworkException("ProcessInitAware类型处理器初始化异常", e);
+                }
+            } else if (processor instanceof ProcessInitAware) {
+                try {
+                    ((ProcessInitAware) processor).init(crawler);
+                } catch (Exception e) {
+                    throw new FrameworkException("ProcessInitAware类型处理器初始化异常", e);
+                }
+            }
             return this;
         });
         return completableFuture.thenCombineAsync(super.startup(crawler), (o, o2) -> o);
@@ -83,11 +97,17 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
     @Override
     public CompletableFuture<IResponseHandler> shutdown(boolean force) {
         return super.shutdown(force).thenCombineAsync(CompletableFuture.supplyAsync(() -> {
-            if (processor instanceof Closeable) {
+            if (processor instanceof AbstractProcessor) {
                 try {
-                    ((Closeable) processor).close();
-                } catch (IOException e) {
-                    log.error("关闭处理器时发生异常");
+                    ((AbstractProcessor) processor).closeByHandler();
+                } catch (Exception e) {
+                    log.error("ProcessCloseAware类型处理器关闭时发生异常");
+                }
+            } else if (processor instanceof ProcessCloseAware) {
+                try {
+                    ((ProcessCloseAware) processor).close();
+                } catch (Exception e) {
+                    log.error("ProcessCloseAware类型处理器关闭时发生异常");
                 }
             }
             return this;

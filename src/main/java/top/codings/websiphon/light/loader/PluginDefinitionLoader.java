@@ -205,4 +205,14 @@ public class PluginDefinitionLoader {
                 })
                 .findFirst();
     }
+
+    public Optional<ClassDefinition> findClassClassnameAndVersion(String classname, String version) {
+        return definitions.values()
+                .parallelStream()
+                .flatMap(jarDefinition -> Arrays.stream(jarDefinition.getClassDefinitions()))
+                .filter(classDefinition ->
+                        StringUtils.equals(classname, classDefinition.getClassName()) &&
+                                StringUtils.equals(version, classDefinition.getVersion()))
+                .findFirst();
+    }
 }

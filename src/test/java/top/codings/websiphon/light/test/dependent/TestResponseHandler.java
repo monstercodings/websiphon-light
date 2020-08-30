@@ -7,12 +7,10 @@ import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.StatResponseHandler;
 import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.function.processor.IProcessor;
-import top.codings.websiphon.light.function.processor.JSONProcessor;
 import top.codings.websiphon.light.function.processor.Text2DocProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
@@ -21,14 +19,14 @@ public class TestResponseHandler extends StatResponseHandler {
     protected IProcessor processorChain() {
         return new AbstractProcessor<String>() {
             @Override
-            protected void init0(ICrawler crawler) {
+            public void init(ICrawler crawler) {
                 if (log.isDebugEnabled()) {
                     log.debug("初始化");
                 }
             }
 
             @Override
-            protected void close0() throws IOException {
+            public void close() throws IOException {
                 if (log.isDebugEnabled()) {
                     log.debug("关闭处理器");
                 }
@@ -38,12 +36,11 @@ public class TestResponseHandler extends StatResponseHandler {
             protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
                 String content = data.length() > 20 ? data.substring(0, 20) : data;
 //                content = data;
-//                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), content);
+                log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), content);
                 return data;
             }
         }
-                .next(new Text2DocProcessor())
-                .next(new JSONProcessor());
+                .next(new Text2DocProcessor());
         /*return new Text2DocProcessor()
                 .next(new AbstractProcessor<Document>() {
                     @Override

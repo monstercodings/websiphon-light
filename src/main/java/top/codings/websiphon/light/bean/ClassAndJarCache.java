@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+@Deprecated
 public class ClassAndJarCache {
     @Getter
     private String basePath;

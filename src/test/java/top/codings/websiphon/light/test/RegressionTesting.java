@@ -77,7 +77,7 @@ public class RegressionTesting {
                         (iRequest, c) -> System.out.println("超时弹出")));
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 1; i++) {
                 c.push("https://www.baidu.com?a=" + i);
             }
 //            c.push("http://localhost:8080/header");
