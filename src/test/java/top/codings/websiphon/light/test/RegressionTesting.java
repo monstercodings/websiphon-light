@@ -2,14 +2,19 @@ package top.codings.websiphon.light.test;
 
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
+import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
 import top.codings.websiphon.light.function.handler.AbstractResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.ApacheRequester;
+import top.codings.websiphon.light.requester.support.BuiltinRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
 import top.codings.websiphon.light.test.dependent.TestResponseHandler;
+
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 
 public class RegressionTesting {
     public static void main(String[] args) throws Exception {
@@ -39,22 +44,23 @@ public class RegressionTesting {
                         .name("test")
                         .version("0.0.1")
 //                        .requesterClass(DoNothingRequester.class.getName())
-                        .requesterClass(NettyRequester.class.getName())
+//                        .requesterClass(NettyRequester.class.getName())
 //                        .requesterClass(ApacheRequester.class.getName())
 //                        .requesterClass(BuiltinRequester.class.getName())
                         .responseHandlerImplClass(TestResponseHandler.class.getName())
                         .networkErrorStrategy(IRequester.NetworkErrorStrategy.RESPONSE)
                         .shutdownHook(c -> System.out.println(c.config().getName() + " | 爬虫马上就要关闭啦~~~"))
                         .build(),
-                null
-                /*new BuiltinRequester(RequesterConfig.builder()
+                null,
+                new BuiltinRequester(RequesterConfig.builder()
                         .connectTimeoutMillis(30000)
                         .idleTimeMillis(30000)
                         .redirect(true)
                         .ignoreSslError(true)
                         .networkErrorStrategy(IRequester.NetworkErrorStrategy.RESPONSE)
                         .maxContentLength(Integer.MAX_VALUE)
-                        .build())*/
+                        .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080)))
+                        .build())
                 /*new ApacheRequester(RequesterConfig.builder()
                         .connectTimeoutMillis(30000)
                         .idleTimeMillis(30000)
@@ -78,7 +84,7 @@ public class RegressionTesting {
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
             for (int i = 0; i < 1; i++) {
-                c.push("https://www.baidu.com?a=" + i);
+                c.push("https://www.google.com");
             }
 //            c.push("http://localhost:8080/header");
         });

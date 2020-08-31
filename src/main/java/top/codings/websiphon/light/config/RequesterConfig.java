@@ -4,6 +4,8 @@ import lombok.Builder;
 import lombok.Getter;
 import top.codings.websiphon.light.requester.IRequester;
 
+import java.net.Proxy;
+
 @Getter
 @Builder
 public class RequesterConfig {
@@ -37,6 +39,10 @@ public class RequesterConfig {
      * 单位字节
      */
     private int downloadBytesPerSecond;
+    /**
+     * 代理对象
+     */
+    private Proxy proxy;
     /**
      * 网络异常时的请求对象的处理策略
      */

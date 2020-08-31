@@ -17,6 +17,8 @@ import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.*;
+import java.net.InetSocketAddress;
+import java.net.ProxySelector;
 import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -68,6 +70,10 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
             HttpClient.Builder builder = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()))
                     .followRedirects(HttpClient.Redirect.NORMAL);
+            if (config.getProxy() != null) {
+                ProxySelector selector = ProxySelector.of((InetSocketAddress) config.getProxy().address());
+                builder.proxy(selector);
+            }
             if (config.isIgnoreSslError()) {
                 SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
                 sslContext.init(null, BuiltinTrustManager.get(), null);
