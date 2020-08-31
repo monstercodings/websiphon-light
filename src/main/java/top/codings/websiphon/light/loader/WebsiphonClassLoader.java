@@ -24,6 +24,10 @@ public class WebsiphonClassLoader extends URLClassLoader {
         super(urls);
     }
 
+    public WebsiphonClassLoader(URL[] urls, ClassLoader parent) {
+        super(urls, parent);
+    }
+
     public Class<?>[] findAllClass(String[] packageNames) {
         return findClassByConditionality(packageNames, null);
     }

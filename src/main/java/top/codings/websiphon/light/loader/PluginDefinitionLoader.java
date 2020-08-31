@@ -40,7 +40,7 @@ public class PluginDefinitionLoader {
                     try (WebsiphonClassLoader classLoader = new WebsiphonClassLoader(
                             new URL[]{
                                     file.toURI().toURL()
-                            }
+                            }, this.getClass().getClassLoader()
                     )) {
                         String name;
                         String version;
@@ -113,7 +113,7 @@ public class PluginDefinitionLoader {
             scanPaths = new String[1];
         }
         scanPaths[scanPaths.length - 1] = DEFAULT_PACKAGE;
-        WebsiphonClassLoader classLoader = new WebsiphonClassLoader(new URL[0]);
+        WebsiphonClassLoader classLoader = new WebsiphonClassLoader(new URL[0], this.getClass().getClassLoader());
         JarDefinition jarDefinition = new JarDefinition(
                 "内置插件库",
                 "0.0.1",
