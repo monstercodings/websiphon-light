@@ -374,6 +374,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
             if (null == executor) {
                 return null;
             }
+            trafficHandler.release();
             executor.shutdown();
             try {
                 executor.awaitTermination(1, TimeUnit.MINUTES);
@@ -397,29 +398,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         return CompletableFuture.allOf(future1, future2).thenApplyAsync(aVoid -> this);
     }
 
-//    @Getter
-//    @Builder
-//    public static class NettyConfig {
-//        /**
-//         * 连接超时时间
-//         */
-//        private int connectTimeoutMillis;
-//        /**
-//         * 传输超时设定
-//         */
-//        private int idleTimeMillis;
-//        /**
-//         * 是否忽略ssl错误
-//         */
-//        private boolean ignoreSslError;
-//        /**
-//         * 最大允许接受的响应长度
-//         */
-//        private int maxContentLength;
-//        /**
-//         * 网络异常时的请求对象的处理策略
-//         */
-//        private IRequester.NetworkErrorStrategy networkErrorStrategy;
-//    }
-
+    public TrafficCounter getTrafficCounter() {
+        return trafficHandler.trafficCounter();
+    }
 }
