@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.net.Proxy;
 import java.net.URI;
 import java.util.Map;
 
@@ -30,6 +31,10 @@ public interface IRequest<T> {
     boolean setStatus(Status status);
 
     Object getUserData();
+
+    void setProxy(Proxy proxy);
+
+    Proxy getProxy();
 
     void lock();
 

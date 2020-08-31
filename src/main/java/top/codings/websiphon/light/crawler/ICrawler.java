@@ -3,6 +3,7 @@ package top.codings.websiphon.light.crawler;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.net.Proxy;
 import java.util.concurrent.CompletableFuture;
 
 public interface ICrawler {
@@ -25,7 +26,11 @@ public interface ICrawler {
 
     void push(String url);
 
+    void push(String url, Proxy proxy);
+
     void push(String url, Object userData);
+
+    void push(String url, Proxy proxy, Object userData);
 
     /**
      * 查看爬虫是否空闲

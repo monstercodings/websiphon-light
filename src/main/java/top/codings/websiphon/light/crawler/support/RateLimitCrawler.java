@@ -1,6 +1,5 @@
 package top.codings.websiphon.light.crawler.support;
 
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
@@ -11,7 +10,6 @@ import top.codings.websiphon.light.requester.support.RateLimitRequester;
 
 import java.util.function.BiConsumer;
 
-@NoArgsConstructor
 public class RateLimitCrawler extends CombineCrawler implements RateLimitableCrawler {
     private final static float DEFAULT_LIMIT_MEMORY = 0.7f;
     @Setter
@@ -24,6 +22,10 @@ public class RateLimitCrawler extends CombineCrawler implements RateLimitableCra
     private int taskTimeoutMillis;
     @Setter
     private BiConsumer<IRequest, ICrawler> timeoutHandler;
+
+    public RateLimitCrawler() {
+        this(DEFAULT_MAX_NETWORK_CONCURRENCY, DEFAULT_TASK_TIMEOUT_MILLIS, DEFAULT_LIMIT_MEMORY, null);
+    }
 
     public RateLimitCrawler(int maxNetworkConcurrency) {
         this(maxNetworkConcurrency, DEFAULT_TASK_TIMEOUT_MILLIS, DEFAULT_LIMIT_MEMORY, null);

@@ -1,11 +1,11 @@
 package top.codings.websiphon.light.crawler;
 
-import lombok.Getter;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 
+import java.net.Proxy;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -46,9 +46,27 @@ public abstract class CombineCrawler implements ICrawler {
     }
 
     @Override
+    public void push(String url, Proxy proxy) {
+        if (next != null) {
+            next.push(url, proxy);
+            return;
+        }
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
     public void push(String url, Object userData) {
         if (next != null) {
             next.push(url, userData);
+            return;
+        }
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
+    public void push(String url, Proxy proxy, Object userData) {
+        if (next != null) {
+            next.push(url, proxy, userData);
             return;
         }
         throw new FrameworkException("非代理爬虫必须实现自身方法");

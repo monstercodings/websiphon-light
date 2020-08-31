@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.net.Proxy;
 import java.net.URI;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -16,6 +17,9 @@ public abstract class BaseRequest<T> implements IRequest<T> {
     protected volatile RequestResult requestResult;
     @Setter
     protected URI uri;
+    @Getter
+    @Setter
+    private Proxy proxy;
     private ReentrantLock lock = new ReentrantLock();
 
     @Override

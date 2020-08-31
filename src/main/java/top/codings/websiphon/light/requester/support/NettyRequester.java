@@ -14,6 +14,7 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.traffic.GlobalTrafficShapingHandler;
 import io.netty.handler.traffic.TrafficCounter;
+import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 import lombok.Getter;
 import lombok.Setter;
@@ -33,6 +34,7 @@ import top.codings.websiphon.light.utils.HttpCharsetUtil;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Optional;
@@ -57,6 +59,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     @Getter
     @Setter
     private IResponseHandler responseHandler;
+    private Proxy globalProxy;
 
     public NettyRequester() {
         this(null, null);
@@ -79,6 +82,9 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                     .build();
         }
         setStrategy(config.getNetworkErrorStrategy());
+        if (config.getProxy() != null) {
+            globalProxy = config.getProxy();
+        }
         this.config = config;
         executor = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
         trafficHandler = new GlobalTrafficShapingHandler(executor, config.getUploadBytesPerSecond(), config.getDownloadBytesPerSecond());
@@ -139,7 +145,25 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
             }
         }
         int finalPort = port;
-        bootstrap.connect(host, port).addListener((ChannelFutureListener) channelFuture -> {
+        ChannelFuture connectFuture;
+        // TODO 需要妥善处理非HTTP代理协议的请求
+        if (request.getProxy() != null) {
+            Proxy proxy = request.getProxy();
+            if (proxy == Proxy.NO_PROXY) {
+                connectFuture = bootstrap.connect(host, port);
+            } else {
+                InetSocketAddress address = (InetSocketAddress) proxy.address();
+                connectFuture = bootstrap.connect(address.getHostString(), address.getPort());
+                connectFuture.channel().attr(AttributeKey.valueOf("proxy")).set(proxy);
+            }
+        } else if (globalProxy != null) {
+            InetSocketAddress address = (InetSocketAddress) globalProxy.address();
+            connectFuture = bootstrap.connect(address.getHostString(), address.getPort());
+            connectFuture.channel().attr(AttributeKey.valueOf("proxy")).set(globalProxy);
+        } else {
+            connectFuture = bootstrap.connect(host, port);
+        }
+        connectFuture.addListener((ChannelFutureListener) channelFuture -> {
             channelFuture.channel().closeFuture().addListener((ChannelFutureListener) inChannelFuture -> {
                 request.lock();
                 try {
@@ -157,156 +181,204 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                     request.unlock();
                 }
             });
-            if (channelFuture.isSuccess()) {
-                channelFuture.channel().pipeline()
-                        .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, config.getIdleTimeMillis(), TimeUnit.MILLISECONDS) {
-                            @Override
-                            protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-                                request.lock();
-                                try {
-                                    if (null != request.requestResult) {
-                                        return;
-                                    }
-                                    request.requestResult = new IRequest.RequestResult();
-                                    request.requestResult.setThrowable(new RuntimeException("网络传输超时"));
-                                    request.requestResult.setSucceed(false);
-                                } finally {
-                                    request.unlock();
-                                    ctx.close();
-                                }
-                            }
-                        })
-                        .addLast(new HttpClientCodec())
-                        .addLast(new HttpContentDecompressor())
-                        .addLast(new HttpObjectAggregator(config.getMaxContentLength()))
-                        .addLast(new SimpleChannelInboundHandler<HttpResponse>() {
-                            @Override
-                            protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpResponse httpResponse) throws Exception {
-                                request.lock();
-                                try {
-                                    if (null != request.requestResult) {
-                                        return;
-                                    }
-                                    request.setStatus(IRequest.Status.RESPONSE);
-                                    request.requestResult = new IRequest.RequestResult();
-                                    if (!httpResponse.decoderResult().isSuccess()) {
-                                        request.requestResult.setSucceed(false);
-                                        request.requestResult.setThrowable(new RuntimeException("响应解析失败"));
-                                        if (null != responseHandler) {
-                                            responseHandler.handle(request);
-                                        }
-                                        return;
-                                    }
-                                    int code = httpResponse.status().code();
-                                    request.requestResult.setCode(code);
-                                    if (code < 200 || code >= 300) {
-                                        request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
-                                        request.requestResult.setData("");
-                                        if (null != responseHandler) {
-                                            responseHandler.handle(request);
-                                        }
-                                        return;
-                                    }
-                                    String contentTypeStr = httpResponse.headers().get("content-type");
-                                    byte[] body;
-                                    if (httpResponse instanceof FullHttpResponse) {
-                                        FullHttpResponse response = (FullHttpResponse) httpResponse;
-                                        body = ByteBufUtil.getBytes(response.content());
-                                    } else {
-                                        log.warn("响应类型尚未有处理方案 -> %s", httpResponse.getClass().getName());
-                                        request.requestResult.setSucceed(false);
-                                        request.requestResult.setThrowable(new RuntimeException("响应类型不匹配"));
-                                        return;
-                                    }
-                                    Charset charset = null;
-                                    String mimeType;
-                                    ContentType contentType;
-                                    if (StringUtils.isNotBlank(contentTypeStr)) {
-                                        contentType = ContentType.parse(contentTypeStr);
-                                        mimeType = contentType.getMimeType();
-                                        charset = contentType.getCharset();
-                                    } else {
-                                        mimeType = "text/html";
-                                    }
-                                    if (charset == null) {
-                                        charset = HttpCharsetUtil.findCharset(body);
-                                    }
-                                    if (mimeType.contains("json") && charset == null) {
-                                        charset = Charset.forName("utf-8");
-                                    }
-                                    if (mimeType.contains("text") && charset == null) {
-                                        request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
-                                        if (null != responseHandler) {
-                                            responseHandler.handle(request);
-                                        }
-                                        return;
-                                    }
-                                    if (mimeType.contains("text")) {
-                                        // 文本解析
-                                        request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
-                                        request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
-                                    } else if (mimeType.contains("json")) {
-                                        // JSON解析
-                                        request.requestResult.setResponseType(IRequest.ResponseType.JSON);
-                                        request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
-                                    } else {
-                                        // 字节解析
-                                        request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
-                                        request.requestResult.setData(body);
-                                    }
-                                    if (null != responseHandler) {
-                                        responseHandler.handle(request);
-                                    }
-                                } catch (Exception e) {
-                                    request.requestResult.setSucceed(false);
-                                    request.requestResult.setThrowable(e);
-                                } finally {
-                                    request.unlock();
-                                    channelHandlerContext.close();
-                                }
-                            }
-
-                            @Override
-                            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                                request.lock();
-                                try {
-                                    if (null != request.requestResult) {
-                                        return;
-                                    }
-                                    request.setStatus(IRequest.Status.ERROR);
-                                    request.requestResult = new IRequest.RequestResult();
-                                    request.requestResult.setThrowable(cause);
-                                    request.requestResult.setSucceed(false);
-                                    if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE && null != responseHandler) {
-                                        responseHandler.handle(request);
-                                    }
-                                } finally {
-                                    request.unlock();
-                                    ctx.close();
-                                }
-                                        /*if (cause instanceof TooLongFrameException) {
-                                            System.err.println("内容太长无法请求成功");
-                                            ctx.close();
+            if (!channelFuture.isSuccess()) {
+                channelError(request, channelFuture.channel(), channelFuture.cause());
+                return;
+            }
+            Proxy proxy = (Proxy) channelFuture.channel().attr(AttributeKey.valueOf("proxy")).get();
+            if (null != proxy) {
+                String uristr = host + ":" + finalPort;
+                DefaultFullHttpRequest defaultFullHttpRequest = new DefaultFullHttpRequest(
+                        HttpVersion.HTTP_1_1, HttpMethod.CONNECT, uristr, Unpooled.EMPTY_BUFFER);
+                defaultFullHttpRequest.headers().set("Host", uristr);
+                channelFuture.channel().pipeline().addLast("@HttpClientCodec", new HttpClientCodec());
+                channelFuture.channel().writeAndFlush(defaultFullHttpRequest).addListener(new ChannelFutureListener() {
+                    @Override
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        if (!future.isSuccess()) {
+                            channelError(request, future.channel(), future.cause());
+                            return;
+                        }
+                        future.channel().pipeline()
+                                .addLast("@HttpObjectAggregator", new HttpObjectAggregator(Integer.MAX_VALUE))
+                                .addLast("@ProxyHandler", new SimpleChannelInboundHandler<HttpResponse>() {
+                                    @Override
+                                    protected void channelRead0(ChannelHandlerContext ctx, HttpResponse msg) throws Exception {
+                                        if (msg.decoderResult().isSuccess() && msg.status().code() == 200) {
+                                            ctx.channel().pipeline().remove("@HttpClientCodec");
+                                            ctx.channel().pipeline().remove("@HttpObjectAggregator");
+                                            ctx.channel().pipeline().remove("@ProxyHandler");
+                                            doTargetRequest(request, uri, scheme, host, finalPort, ctx.channel());
                                             return;
                                         }
-                                        super.exceptionCaught(ctx, cause);*/
+                                        channelError(request, ctx.channel(), new FrameworkException("无法连接代理服务器"));
+                                    }
+
+                                    @Override
+                                    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                                        channelError(request, ctx.channel(), cause);
+                                    }
+                                });
+                    }
+                });
+                return;
+            }
+            doTargetRequest(request, uri, scheme, host, finalPort, channelFuture.channel());
+        });
+
+        return cf;
+    }
+
+    private void doTargetRequest(NettyRequest request, URI uri, String scheme, String host, int finalPort, Channel channel) {
+        channel.pipeline()
+                .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, config.getIdleTimeMillis(), TimeUnit.MILLISECONDS) {
+                    @Override
+                    protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
+                        request.lock();
+                        try {
+                            if (null != request.requestResult) {
+                                return;
                             }
-                        })
-                ;
-                if (scheme.equalsIgnoreCase("https")) {
-                    InetSocketAddress address = (InetSocketAddress) channelFuture.channel().remoteAddress();
-                    SSLEngine sslEngine = sslContext.createSSLEngine(address.getHostString(), address.getPort());
-                    sslEngine.setUseClientMode(true);
-                    channelFuture.channel().pipeline().addAfter("@IdleStateHandler", "@SSL", new SslHandler(sslEngine));
-                }
-                HttpRequest httpRequest = request.httpRequest;
-                if (!httpRequest.headers().contains("User-Agent")) {
-                    httpRequest.headers().set("User-Agent", "H.J/http-client/0.0.1");
-                }
-                httpRequest.headers()
-                        .set("Host", host + ":" + finalPort)
-                        .set("Origin", uri.toString())
-                        .set("Referer", uri.toString())
+                            request.requestResult = new IRequest.RequestResult();
+                            request.requestResult.setThrowable(new RuntimeException("网络传输超时"));
+                            request.requestResult.setSucceed(false);
+                        } finally {
+                            request.unlock();
+                            ctx.close();
+                        }
+                    }
+                })
+                .addLast(new HttpClientCodec())
+                .addLast(new HttpContentDecompressor())
+                .addLast(new HttpObjectAggregator(config.getMaxContentLength()))
+                .addLast(new SimpleChannelInboundHandler<HttpResponse>() {
+                    @Override
+                    protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpResponse httpResponse) throws Exception {
+                        request.lock();
+                        try {
+                            if (null != request.requestResult) {
+                                return;
+                            }
+                            request.setStatus(IRequest.Status.RESPONSE);
+                            request.requestResult = new IRequest.RequestResult();
+                            if (!httpResponse.decoderResult().isSuccess()) {
+                                request.requestResult.setSucceed(false);
+                                request.requestResult.setThrowable(new RuntimeException("响应解析失败"));
+                                if (null != responseHandler) {
+                                    responseHandler.handle(request);
+                                }
+                                return;
+                            }
+                            int code = httpResponse.status().code();
+                            request.requestResult.setCode(code);
+                            if (code < 200 || code >= 300) {
+                                request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
+                                request.requestResult.setData("");
+                                if (null != responseHandler) {
+                                    responseHandler.handle(request);
+                                }
+                                return;
+                            }
+                            String contentTypeStr = httpResponse.headers().get("content-type");
+                            byte[] body;
+                            if (httpResponse instanceof FullHttpResponse) {
+                                FullHttpResponse response = (FullHttpResponse) httpResponse;
+                                body = ByteBufUtil.getBytes(response.content());
+                            } else {
+                                log.warn("响应类型尚未有处理方案 -> %s", httpResponse.getClass().getName());
+                                request.requestResult.setSucceed(false);
+                                request.requestResult.setThrowable(new RuntimeException("响应类型不匹配"));
+                                return;
+                            }
+                            Charset charset = null;
+                            String mimeType;
+                            ContentType contentType;
+                            if (StringUtils.isNotBlank(contentTypeStr)) {
+                                contentType = ContentType.parse(contentTypeStr);
+                                mimeType = contentType.getMimeType();
+                                charset = contentType.getCharset();
+                            } else {
+                                mimeType = "text/html";
+                            }
+                            if (charset == null) {
+                                charset = HttpCharsetUtil.findCharset(body);
+                            }
+                            if (mimeType.contains("json") && charset == null) {
+                                charset = Charset.forName("utf-8");
+                            }
+                            if (mimeType.contains("text") && charset == null) {
+                                request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
+                                if (null != responseHandler) {
+                                    responseHandler.handle(request);
+                                }
+                                return;
+                            }
+                            if (mimeType.contains("text")) {
+                                // 文本解析
+                                request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
+                                request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
+                            } else if (mimeType.contains("json")) {
+                                // JSON解析
+                                request.requestResult.setResponseType(IRequest.ResponseType.JSON);
+                                request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
+                            } else {
+                                // 字节解析
+                                request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
+                                request.requestResult.setData(body);
+                            }
+                            if (null != responseHandler) {
+                                responseHandler.handle(request);
+                            }
+                        } catch (Exception e) {
+                            request.requestResult.setSucceed(false);
+                            request.requestResult.setThrowable(e);
+                        } finally {
+                            request.unlock();
+                            channelHandlerContext.close();
+                        }
+                    }
+
+                    @Override
+                    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                        request.lock();
+                        try {
+                            if (null != request.requestResult) {
+                                return;
+                            }
+                            request.setStatus(IRequest.Status.ERROR);
+                            request.requestResult = new IRequest.RequestResult();
+                            request.requestResult.setThrowable(cause);
+                            request.requestResult.setSucceed(false);
+                            if (getStrategy() == NetworkErrorStrategy.RESPONSE && null != responseHandler) {
+                                responseHandler.handle(request);
+                            }
+                        } finally {
+                            request.unlock();
+                            ctx.close();
+                        }
+                                    /*if (cause instanceof TooLongFrameException) {
+                                        System.err.println("内容太长无法请求成功");
+                                        ctx.close();
+                                        return;
+                                    }
+                                    super.exceptionCaught(ctx, cause);*/
+                    }
+                })
+        ;
+        if (scheme.equalsIgnoreCase("https")) {
+            InetSocketAddress address = (InetSocketAddress) channel.remoteAddress();
+            SSLEngine sslEngine = sslContext.createSSLEngine(address.getHostString(), address.getPort());
+            sslEngine.setUseClientMode(true);
+            channel.pipeline().addAfter("@IdleStateHandler", "@SSL", new SslHandler(sslEngine));
+        }
+        HttpRequest httpRequest = request.httpRequest;
+        if (!httpRequest.headers().contains("User-Agent")) {
+            httpRequest.headers().set("User-Agent", "H.J/http-client/0.0.1");
+        }
+        httpRequest.headers()
+                .set("Host", host + ":" + finalPort)
+                .set("Origin", uri.toString())
+                .set("Referer", uri.toString())
 //                        .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3")
 //                        .set("Accept-Encoding", "gzip, deflate, compress")
 //                        .set("Accept-Language", "zh-CN,zh;q=0.9")
@@ -315,33 +387,27 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
 //                        .set("DNT", "1")
 //                        .set("Upgrade-Insecure-Requests", "1")
 //                        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
-                ;
-                channelFuture.channel().writeAndFlush(httpRequest).addListener((ChannelFutureListener) innerFuture -> {
-                    if (!innerFuture.isSuccess()) {
-                        channelError(request, innerFuture);
-                    }
-                });
-            } else {
-                channelError(request, channelFuture);
+        ;
+        channel.writeAndFlush(httpRequest).addListener((ChannelFutureListener) innerFuture -> {
+            if (!innerFuture.isSuccess()) {
+                channelError(request, innerFuture.channel(), innerFuture.cause());
             }
         });
-
-        return cf;
     }
 
-    private void channelError(NettyRequest request, ChannelFuture future) {
+    private void channelError(NettyRequest request, Channel channel, Throwable throwable) {
         request.lock();
         try {
             if (request.requestResult == null) {
                 request.setStatus(IRequest.Status.ERROR);
                 request.requestResult = new IRequest.RequestResult();
                 request.requestResult.setSucceed(false);
-                request.requestResult.setThrowable(future.cause());
+                request.requestResult.setThrowable(throwable);
                 if (getStrategy() == NetworkErrorStrategy.RESPONSE && null != responseHandler) {
                     responseHandler.handle(request);
                 }
             }
-            future.channel().close();
+            channel.close();
         } finally {
             request.unlock();
         }

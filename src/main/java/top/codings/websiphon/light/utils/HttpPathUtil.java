@@ -1,16 +1,12 @@
 package top.codings.websiphon.light.utils;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
 import java.net.URI;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class HttpPathUtil {
-    private static Pattern pattern = Pattern.compile("(\\w+)://([^/:]+)(:\\d*)?([^# ]*)");
+//    private static Pattern pattern = Pattern.compile("(\\w+)://([^/:]+)(:\\d*)?([^# ]*)");
 
     /**
      * 将相对路径的超链接转换为绝对路径的超链接
@@ -95,6 +91,9 @@ public class HttpPathUtil {
         String scheme = fullPath.getScheme();
         String host = String.format("%s%s", fullPath.getHost(), portstr);
         String path = fullPath.getPath();
+        if (StringUtils.isBlank(path)) {
+            path = "/";
+        }
         if (relativePath.startsWith("//")) {
             return Optional.ofNullable(String.join(":", scheme, relativePath));
         } else if (relativePath.startsWith("/")) {
@@ -123,6 +122,12 @@ public class HttpPathUtil {
             System.arraycopy(paths, 0, nps, 0, nps.length);
             return Optional.ofNullable(String.format("%s://%s%s/%s", scheme, host, String.join("/", nps), prev));
         } else {
+            int index = path.lastIndexOf("/");
+            if (index > 0) {
+                path = path.substring(0, index);
+            } else {
+                path = "";
+            }
             return Optional.ofNullable(String.format("%s://%s%s/%s", scheme, host, path, relativePath));
         }
     }

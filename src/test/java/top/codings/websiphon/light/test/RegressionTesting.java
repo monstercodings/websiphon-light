@@ -8,8 +8,6 @@ import top.codings.websiphon.light.crawler.support.*;
 import top.codings.websiphon.light.function.handler.AbstractResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
-import top.codings.websiphon.light.requester.support.ApacheRequester;
-import top.codings.websiphon.light.requester.support.BuiltinRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
 import top.codings.websiphon.light.test.dependent.TestResponseHandler;
 
@@ -52,7 +50,7 @@ public class RegressionTesting {
                         .shutdownHook(c -> System.out.println(c.config().getName() + " | 爬虫马上就要关闭啦~~~"))
                         .build(),
                 null,
-                new BuiltinRequester(RequesterConfig.builder()
+                /*new BuiltinRequester(RequesterConfig.builder()
                         .connectTimeoutMillis(30000)
                         .idleTimeMillis(30000)
                         .redirect(true)
@@ -60,7 +58,7 @@ public class RegressionTesting {
                         .networkErrorStrategy(IRequester.NetworkErrorStrategy.RESPONSE)
                         .maxContentLength(Integer.MAX_VALUE)
                         .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080)))
-                        .build())
+                        .build())*/
                 /*new ApacheRequester(RequesterConfig.builder()
                         .connectTimeoutMillis(30000)
                         .idleTimeMillis(30000)
@@ -68,12 +66,14 @@ public class RegressionTesting {
                         .ignoreSslError(true)
                         .networkErrorStrategy(IRequester.NetworkErrorStrategy.RESPONSE)
                         .maxContentLength(Integer.MAX_VALUE)
+                        .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080)))
                         .build())*/
-                /*new NettyRequester(RequesterConfig.builder()
+                new NettyRequester(RequesterConfig.builder()
                         .connectTimeoutMillis(30000)
                         .ignoreSslError(true)
                         .maxContentLength(1024 * 512)
-                        .build())*/
+                        .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 8888)))
+                        .build())
 //                new DoNothingRequester()
         )
                 .wrapBy(new StatCrawler<>(stat))
@@ -84,7 +84,10 @@ public class RegressionTesting {
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
             for (int i = 0; i < 1; i++) {
-                c.push("https://www.google.com");
+                c.push("https://video.twimg.com/ext_tw_video/1299719026067808257/pu/pl/BAQ392kyqXKXAlqm.m3u8?tag=10"
+//                        ,Proxy.NO_PROXY
+                        ,new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080))
+                );
             }
 //            c.push("http://localhost:8080/header");
         });

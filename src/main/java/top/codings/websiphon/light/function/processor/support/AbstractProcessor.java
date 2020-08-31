@@ -1,8 +1,11 @@
-package top.codings.websiphon.light.function.processor;
+package top.codings.websiphon.light.function.processor.support;
 
 import io.netty.util.internal.TypeParameterMatcher;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.function.processor.IProcessor;
+import top.codings.websiphon.light.function.processor.ProcessCloseAware;
+import top.codings.websiphon.light.function.processor.ProcessInitAware;
 import top.codings.websiphon.light.requester.IRequest;
 
 @Slf4j

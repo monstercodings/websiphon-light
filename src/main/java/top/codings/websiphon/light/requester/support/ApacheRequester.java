@@ -9,6 +9,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.DeflateInputStreamFactory;
@@ -41,6 +42,8 @@ import top.codings.websiphon.light.utils.HttpCharsetUtil;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.Optional;
@@ -90,8 +93,21 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                     .register("x-gzip", GZIPInputStreamFactory.getInstance())
                     .register("deflate", DeflateInputStreamFactory.getInstance())
                     .build();
+            HttpHost httpHost = null;
+            if (config.getProxy() != null) {
+                Proxy proxy = config.getProxy();
+                InetSocketAddress address = (InetSocketAddress) proxy.address();
+                httpHost = HttpHost.create(
+                        String.format("%s://%s:%d",
+                                proxy.type().name().toLowerCase(),
+                                address.getHostString(),
+                                address.getPort()
+                        )
+                );
+            }
             requestConfig = RequestConfig
                     .custom()
+                    .setProxy(httpHost)
                     .setContentCompressionEnabled(true)
                     .setRedirectsEnabled(config.isRedirect())
                     .setRelativeRedirectsAllowed(config.isRedirect())

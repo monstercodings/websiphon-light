@@ -13,6 +13,7 @@ import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
 
+import java.net.Proxy;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -29,13 +30,14 @@ public class BaseCrawler extends CombineCrawler {
     public BaseCrawler(IResponseHandler responseHandler) {
         this(null, responseHandler);
     }
+
     public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler) {
         this(config, responseHandler, null);
     }
 
     public BaseCrawler(CrawlerConfig config, IResponseHandler responseHandler, CombineRequester requester) {
         if (config == null) {
-            config= CrawlerConfig.builder().build();
+            config = CrawlerConfig.builder().build();
         }
         if (config.getMaxConcurrentProcessing() <= 0) {
             config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors() + 1);
@@ -84,12 +86,24 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public void push(String url) {
-        push(url, null);
+        push(url, null, null);
+    }
+
+    @Override
+    public void push(String url, Proxy proxy) {
+        push(url, proxy, null);
     }
 
     @Override
     public void push(String url, Object userData) {
-        push(getRequester().create(url, userData));
+        push(url, null, userData);
+    }
+
+    @Override
+    public void push(String url, Proxy proxy, Object userData) {
+        IRequest request = getRequester().create(url, userData);
+        request.setProxy(proxy);
+        push(request);
     }
 
     @Override
