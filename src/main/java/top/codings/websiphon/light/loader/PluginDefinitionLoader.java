@@ -69,7 +69,7 @@ public class PluginDefinitionLoader {
                             return;
                         }
                         JarDefinition jarDefinition = new JarDefinition(
-                                name, version, description, author, homepage, packaging, file.getAbsolutePath());
+                                name, version, description, author, homepage, packaging, file);
                         String id = getJarId(jarDefinition);
                         JarDefinition temp = definitions.putIfAbsent(id, jarDefinition);
                         if (temp != null) {
