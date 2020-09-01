@@ -22,8 +22,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @PluginDefinition(
-        name = "m3u8视频分片信息连接提取处理器",
-        description = "用于提取m3u8视频分片信息URL的处理器，必须配合M3u8DownloadProcessor以及M3u8ExtInfProcessor进行食用",
+        name = "m3u8视频下载处理器",
+        description = "用于下载m3u8类型的视频",
         type = PluginType.PROCESSOR
 )
 public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
