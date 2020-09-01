@@ -2,7 +2,7 @@ package top.codings.websiphon.light.function.handler;
 
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.error.FrameworkException;
-import top.codings.websiphon.light.function.processor.support.AbstractProcessor;
+import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.function.processor.IProcessor;
 
 @Slf4j

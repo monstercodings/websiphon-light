@@ -3,6 +3,7 @@ package top.codings.websiphon.light.requester;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.http.entity.ContentType;
 
 import java.net.Proxy;
 import java.net.URI;
@@ -31,6 +32,12 @@ public interface IRequest<T> {
     boolean setStatus(Status status);
 
     Object getUserData();
+
+    void setUserData(Object userData);
+
+    ContentType getContentType();
+
+    void setContentType(ContentType contentType);
 
     void setProxy(Proxy proxy);
 

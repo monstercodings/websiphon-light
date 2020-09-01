@@ -79,14 +79,15 @@ public class RegressionTesting {
                 .wrapBy(new StatCrawler<>(stat))
                 .wrapBy(new FakeCrawler())
                 .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler(5, 30000, 0.95f,
+                .wrapBy(new RateLimitCrawler(20, 30000 * 4, 0.95f,
                         (iRequest, c) -> System.out.println("超时弹出")));
         crawler.startup().thenAcceptAsync(c -> {
             System.out.println("爬虫已启动");
             for (int i = 0; i < 1; i++) {
                 c.push("https://video.twimg.com/ext_tw_video/1299719026067808257/pu/pl/BAQ392kyqXKXAlqm.m3u8?tag=10"
 //                        ,Proxy.NO_PROXY
-                        ,new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080))
+                        , new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080))
+                        , "为师大功已成"
                 );
             }
 //            c.push("http://localhost:8080/header");

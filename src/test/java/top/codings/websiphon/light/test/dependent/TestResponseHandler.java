@@ -1,12 +1,15 @@
 package top.codings.websiphon.light.test.dependent;
 
 import lombok.extern.slf4j.Slf4j;
+import top.codings.websiphon.light.bean.M3u8;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.FilterableCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.StatResponseHandler;
-import top.codings.websiphon.light.function.processor.*;
-import top.codings.websiphon.light.function.processor.support.*;
+import top.codings.websiphon.light.function.processor.IProcessor;
+import top.codings.websiphon.light.function.processor.AbstractProcessor;
+import top.codings.websiphon.light.function.processor.support.M3u8DownloadProcessor;
+import top.codings.websiphon.light.function.processor.support.Text2DocProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.io.IOException;
@@ -40,9 +43,17 @@ public class TestResponseHandler extends StatResponseHandler {
             }
         }
                 .next(new Text2DocProcessor())
-                .next(new M3u8SegmentProcessor())
-                .next(new M3u8ExtInfProcessor("config/data"))
-                .next(new M3u8DownloadProcessor());
+                .next(new M3u8DownloadProcessor(true))
+//                .next(new M3u8ExtInfProcessor("config/data"))
+//                .next(new M3u8DownloadProcessor())
+                .next(new AbstractProcessor<M3u8>() {
+                    @Override
+                    protected Object process0(M3u8 data, IRequest request, ICrawler crawler) throws Exception {
+                        log.debug("下载完成 -> {} | 大小[{}]", request.getUserData(), data.getContent().length);
+                        return null;
+                    }
+                })
+                ;
         /*return new Text2DocProcessor()
                 .next(new AbstractProcessor<Document>() {
                     @Override

@@ -292,7 +292,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                             }
                             Charset charset = null;
                             String mimeType;
-                            ContentType contentType;
+                            ContentType contentType = ContentType.DEFAULT_BINARY;
                             if (StringUtils.isNotBlank(contentTypeStr)) {
                                 contentType = ContentType.parse(contentTypeStr);
                                 mimeType = contentType.getMimeType();
@@ -326,6 +326,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                 request.requestResult.setResponseType(IRequest.ResponseType.BYTE);
                                 request.requestResult.setData(body);
                             }
+                            request.setContentType(contentType);
                             if (null != responseHandler) {
                                 responseHandler.handle(request);
                             }

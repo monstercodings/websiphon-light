@@ -2,6 +2,7 @@ package top.codings.websiphon.light.requester.support;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.http.entity.ContentType;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.net.Proxy;
@@ -11,6 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @Getter
 public abstract class BaseRequest<T> implements IRequest<T> {
     protected volatile IRequest.Status status;
+    @Getter
     @Setter
     protected Object userData;
     @Setter
@@ -19,7 +21,10 @@ public abstract class BaseRequest<T> implements IRequest<T> {
     protected URI uri;
     @Getter
     @Setter
-    private Proxy proxy;
+    protected ContentType contentType;
+    @Getter
+    @Setter
+    protected Proxy proxy;
     private ReentrantLock lock = new ReentrantLock();
 
     @Override
