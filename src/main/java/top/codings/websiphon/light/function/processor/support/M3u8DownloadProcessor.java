@@ -1,5 +1,7 @@
 package top.codings.websiphon.light.function.processor.support;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -31,6 +33,7 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
     private String basePath;
     private boolean localStorage;
     private boolean downloadConcurrency;
+    private Class<? extends UserDataStack> stackClass;
 
     public M3u8DownloadProcessor() {
         this(null, false);
@@ -53,6 +56,15 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
     }
 
     @Override
+    public void init(ICrawler crawler) throws Exception {
+        stackClass = getStackClass();
+    }
+
+    protected Class<? extends UserDataStack> getStackClass() {
+        return UserDataStack.class;
+    }
+
+    @Override
     protected Object process0(byte[] data, IRequest request, ICrawler crawler) throws Exception {
         Object userData = request.getUserData();
         if (!CONTENT_TYPE.getMimeType().equals(request.getContentType().getMimeType())) {
@@ -64,7 +76,11 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         if (userData instanceof UserDataStack) {
             stack = (UserDataStack) userData;
         } else {
-            stack = new UserDataStack();
+            if (stackClass != null) {
+                stack = stackClass.getConstructor().newInstance();
+            } else {
+                stack = new UserDataStack();
+            }
             stack.userData = userData;
             request.setUserData(stack);
         }
@@ -288,11 +304,20 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
     }
 
     protected static class UserDataStack {
+        @Getter
+        @Setter
         private Object userData;
         private Queue<Map<String, Object>> queue;
+        @Getter
         private int stage;
+        @Getter
         private byte[][] segments;
+        @Getter
         private Map<String, Object> params;
         private AtomicBoolean finish = new AtomicBoolean(false);
+
+        protected boolean isFinish() {
+            return finish.get();
+        }
     }
 }
