@@ -85,6 +85,16 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         return null;
     }
 
+    @Override
+    protected boolean isMatch(IRequest request, Throwable throwable) {
+        return request.getUserData() instanceof UserDataStack;
+    }
+
+    @Override
+    protected void whenError(IRequest request, Throwable throwable, ICrawler crawler) {
+        request.setUserData(((UserDataStack) request.getUserData()).userData);
+    }
+
     private void stageOne(byte[] data, IRequest request, ICrawler crawler) {
         List<ExtXStreamInf> list = parseExtXStreamInf(data);
         if (list.isEmpty()) {
@@ -146,16 +156,6 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         }
     }
 
-    private UserDataStack copyUserDataStack(UserDataStack stack, Map<String, Object> som) {
-        UserDataStack copy = new UserDataStack();
-        copy.userData = stack.userData;
-        copy.stage = stack.stage;
-        copy.segments = stack.segments;
-        copy.queue = stack.queue;
-        copy.params = som;
-        return copy;
-    }
-
     private M3u8 stageThird(byte[] data, IRequest request, ICrawler crawler) throws Exception {
         UserDataStack stack = (UserDataStack) request.getUserData();
         // 把数据放到对应的槽位上
@@ -204,36 +204,16 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         } finally {
             lock.unlock();
         }
+    }
 
-        /*File file = (File) map.get("file");
-        int recordCount = (int) map.get("count");
-        Lock lock = (Lock) map.get("lock");
-        FileUtils.writeByteArrayToFile(file, data);
-        int tsFileCount = FileUtils.listFiles(file.getParentFile(), new String[]{"ts"}, true).size();
-        if (recordCount != tsFileCount || !lock.tryLock()) {
-            return null;
-        }
-        try {
-            tsFileCount = FileUtils.listFiles(file.getParentFile(), new String[]{"ts"}, true).size();
-            if (recordCount != tsFileCount) {
-                return null;
-            }
-            if (log.isDebugEnabled()) {
-                log.debug("ts文件已全部下载完成");
-            }
-            File save = Path.of(file.getParentFile().getPath(), file.getParentFile().getName() + ".mp4").toFile();
-            File[] files = FileUtils.listFiles(file.getParentFile(), new String[]{"ts"}, true).toArray(File[]::new);
-            Arrays.parallelSort(files, Comparator.comparing(File::getName));
-            for (File f : files) {
-                FileUtils.writeByteArrayToFile(save, FileUtils.readFileToByteArray(f), true);
-                f.delete();
-            }
-            if (log.isDebugEnabled()) {
-                log.debug("ts文件已合成为mp4文件 -> {}", save.getAbsolutePath());
-            }
-        } finally {
-            lock.unlock();
-        }*/
+    private UserDataStack copyUserDataStack(UserDataStack stack, Map<String, Object> som) {
+        UserDataStack copy = new UserDataStack();
+        copy.userData = stack.userData;
+        copy.stage = stack.stage;
+        copy.segments = stack.segments;
+        copy.queue = stack.queue;
+        copy.params = som;
+        return copy;
     }
 
     private List<ExtXStreamInf> parseExtXStreamInf(byte[] bytes) {

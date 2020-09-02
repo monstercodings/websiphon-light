@@ -3,10 +3,8 @@ package top.codings.websiphon.light.function.handler;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
-import top.codings.websiphon.light.function.processor.AbstractProcessor;
-import top.codings.websiphon.light.function.processor.IProcessor;
-import top.codings.websiphon.light.function.processor.ProcessCloseAware;
-import top.codings.websiphon.light.function.processor.ProcessInitAware;
+import top.codings.websiphon.light.error.StopHandlErrorException;
+import top.codings.websiphon.light.function.processor.*;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.List;
@@ -34,10 +32,20 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
                 return request;
             });
             errors.add(request -> {
+                try {
+                    if (processor instanceof ProcessErrorAware) {
+                        ((ProcessErrorAware) processor).doOnError(
+                                request, request.getRequestResult().cause(), crawler);
+                    }
+                    return request;
+                } catch (StopHandlErrorException e) {
+                    return null;
+                }
+            });
+            errors.add(request -> {
                 IRequest.RequestResult result = request.getRequestResult();
                 Throwable throwable = result.cause();
                 handleError(request, throwable, crawler);
-//            log.error("发生异常 -> {}", throwable.getClass());
                 return request;
             });
             if (processor instanceof AbstractProcessor) {
