@@ -274,7 +274,7 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         return list;
     }
 
-    private static class ExtXStreamInf {
+    protected static class ExtXStreamInf {
         private int programId;
         private int bandwidth;
         private String resolution;
@@ -282,12 +282,12 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         private String path;
     }
 
-    private static class ExtInf {
+    protected static class ExtInf {
         private String[] properties;
         private String path;
     }
 
-    private static class UserDataStack {
+    protected static class UserDataStack {
         private Object userData;
         private Queue<Map<String, Object>> queue;
         private int stage;
