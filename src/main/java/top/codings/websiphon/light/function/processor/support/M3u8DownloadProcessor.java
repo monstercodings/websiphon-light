@@ -1,6 +1,7 @@
 package top.codings.websiphon.light.function.processor.support;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -303,6 +304,7 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         private String path;
     }
 
+    @NoArgsConstructor
     protected static class UserDataStack {
         @Getter
         @Setter
