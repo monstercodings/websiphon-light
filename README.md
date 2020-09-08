@@ -1,7 +1,7 @@
 # 轻量化的爬虫框架
 
 > 属于websiphon的轻量化版本  
-> 当前版本 0.0.92
+> 当前版本 0.1.0
 
 ### 简要介绍
 
@@ -30,8 +30,15 @@ ICrawler crawler = new BaseCrawler(
             }
         }
 );
-crawler.startup();
-crawler.push("https://www.baidu.com");
+crawler.startup()
+       .whenCompleteAsync((crawler, throwable) -> {
+                             if (throwable != null) {
+                                 log.error("爬虫启动失败", throwable);
+                             } else {
+                                 log.debug("[{}]爬虫启动成功", crawler.config().getName());
+                                 crawler.push("https://www.baidu.com");
+                             }
+                         });
 // 主动关闭爬虫
 // crawler.shutdown();
 ```
