@@ -11,6 +11,7 @@ import top.codings.websiphon.light.bean.M3u8;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.anno.Shared;
 import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.utils.HttpPathUtil;
@@ -24,6 +25,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
+@Shared
 @PluginDefinition(
         name = "m3u8视频下载处理器",
         description = "用于下载m3u8类型的视频",
@@ -58,7 +60,9 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
 
     @Override
     public void init(ICrawler crawler) throws Exception {
-        stackClass = getStackClass();
+        if (stackClass == null) {
+            stackClass = getStackClass();
+        }
     }
 
     protected Class<? extends UserDataStack> getStackClass() {

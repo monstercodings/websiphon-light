@@ -34,8 +34,8 @@ public class RegistryCrawler extends CombineCrawler implements RegistrableCrawle
     }
 
     @Override
-    public CompletableFuture<ICrawler> startup() {
-        CompletableFuture<ICrawler> completableFuture = super.startup();
+    public CompletableFuture<? extends ICrawler> startup() {
+        CompletableFuture<? extends ICrawler> completableFuture = super.startup();
         if (registryConfig.isEnabled()) {
             registry.setConfig(config, registryConfig);
             registry.setCrawler(this);

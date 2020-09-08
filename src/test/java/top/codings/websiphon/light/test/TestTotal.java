@@ -82,7 +82,7 @@ public class TestTotal {
                 CrawlerConfig.builder()
                         .name("我的测试爬虫")
                         .version("0.0.1")
-                        .responseHandlerImplClass("top.codings.websiphon.light.test.dependent.TestResponseHandler")
+                        .responseHandlerImplClass("top.codings.websiphon.light.test.integrity.TestResponseHandler")
 //                        .requesterClass("top.codings.websiphon.light.requester.support.BuiltinRequester")
 //                        .requesterClass("top.codings.websiphon.light.requester.support.ApacheRequester")
                         .requesterClass("top.codings.websiphon.light.requester.support.NettyRequester")

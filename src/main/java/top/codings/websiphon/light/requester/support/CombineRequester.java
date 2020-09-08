@@ -1,13 +1,16 @@
 package top.codings.websiphon.light.requester.support;
 
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.function.ComponentCloseAware;
+import top.codings.websiphon.light.function.ComponentInitAware;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 
 import java.util.concurrent.CompletableFuture;
 
-public abstract class CombineRequester<T extends IRequest> implements IRequester<T> {
+public abstract class CombineRequester<T extends IRequest> implements IRequester<T>, ComponentInitAware<ICrawler>, ComponentCloseAware {
     protected volatile boolean shutdown;
     protected CombineRequester<T> requester;
     private Class<T> requestClass;
@@ -32,9 +35,10 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
     }
 
     @Override
-    public CompletableFuture<IRequester> init() {
+    public void init(ICrawler crawler) throws Exception {
         if (null != requester) {
-            return requester.init();
+            requester.init(crawler);
+            return;
         }
         throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }
@@ -64,9 +68,10 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
     }
 
     @Override
-    public CompletableFuture<IRequester> shutdown(boolean force) {
+    public void close() throws Exception{
         if (null != requester) {
-            return requester.shutdown(force);
+            requester.close();
+            return;
         }
         throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
     }

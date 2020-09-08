@@ -31,7 +31,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import org.apache.http.util.EntityUtils;
 import top.codings.websiphon.light.config.RequesterConfig;
-import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.bean.PluginType;
@@ -40,7 +40,6 @@ import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
@@ -86,53 +85,47 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
     }
 
     @Override
-    public CompletableFuture<IRequester> init() {
-        try {
-            decoderRegistry = RegistryBuilder.<InputStreamFactory>create()
-                    .register("gzip", GZIPInputStreamFactory.getInstance())
-                    .register("x-gzip", GZIPInputStreamFactory.getInstance())
-                    .register("deflate", DeflateInputStreamFactory.getInstance())
-                    .build();
-            HttpHost httpHost = null;
-            if (config.getProxy() != null) {
-                Proxy proxy = config.getProxy();
-                InetSocketAddress address = (InetSocketAddress) proxy.address();
-                httpHost = HttpHost.create(
-                        String.format("%s://%s:%d",
-                                proxy.type().name().toLowerCase(),
-                                address.getHostString(),
-                                address.getPort()
-                        )
-                );
-            }
-            requestConfig = RequestConfig
-                    .custom()
-                    .setProxy(httpHost)
-                    .setContentCompressionEnabled(true)
-                    .setRedirectsEnabled(config.isRedirect())
-                    .setRelativeRedirectsAllowed(config.isRedirect())
-                    .setCircularRedirectsAllowed(false)
-                    .build();
-            HttpAsyncClientBuilder httpAsyncClientBuilder = HttpAsyncClients
-                    .custom()
-                    .setConnectionReuseStrategy(DefaultClientConnectionReuseStrategy.INSTANCE)
-                    .disableCookieManagement()
-                    .setDefaultRequestConfig(requestConfig)
-                    .setMaxConnPerRoute(Integer.MAX_VALUE)
-                    .setMaxConnTotal(Integer.MAX_VALUE);
-            if (config.isIgnoreSslError()) {
-                httpAsyncClientBuilder.setSSLStrategy(new SSLIOSessionStrategy(
-                        SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build(),
-                        (hostname, session) -> true)
-                );
-            }
-            client = httpAsyncClientBuilder.build();
-            client.start();
-        } catch (Exception e) {
-//            log.error("初始化请求器失败", e);
-            return CompletableFuture.failedFuture(new FrameworkException("初始化请求器失败", e));
+    public void init(ICrawler crawler) throws Exception {
+        decoderRegistry = RegistryBuilder.<InputStreamFactory>create()
+                .register("gzip", GZIPInputStreamFactory.getInstance())
+                .register("x-gzip", GZIPInputStreamFactory.getInstance())
+                .register("deflate", DeflateInputStreamFactory.getInstance())
+                .build();
+        HttpHost httpHost = null;
+        if (config.getProxy() != null) {
+            Proxy proxy = config.getProxy();
+            InetSocketAddress address = (InetSocketAddress) proxy.address();
+            httpHost = HttpHost.create(
+                    String.format("%s://%s:%d",
+                            proxy.type().name().toLowerCase(),
+                            address.getHostString(),
+                            address.getPort()
+                    )
+            );
         }
-        return CompletableFuture.completedFuture(this);
+        requestConfig = RequestConfig
+                .custom()
+                .setProxy(httpHost)
+                .setContentCompressionEnabled(true)
+                .setRedirectsEnabled(config.isRedirect())
+                .setRelativeRedirectsAllowed(config.isRedirect())
+                .setCircularRedirectsAllowed(false)
+                .build();
+        HttpAsyncClientBuilder httpAsyncClientBuilder = HttpAsyncClients
+                .custom()
+                .setConnectionReuseStrategy(DefaultClientConnectionReuseStrategy.INSTANCE)
+                .disableCookieManagement()
+                .setDefaultRequestConfig(requestConfig)
+                .setMaxConnPerRoute(Integer.MAX_VALUE)
+                .setMaxConnTotal(Integer.MAX_VALUE);
+        if (config.isIgnoreSslError()) {
+            httpAsyncClientBuilder.setSSLStrategy(new SSLIOSessionStrategy(
+                    SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build(),
+                    (hostname, session) -> true)
+            );
+        }
+        client = httpAsyncClientBuilder.build();
+        client.start();
     }
 
     @Override
@@ -167,15 +160,10 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
     }
 
     @Override
-    public CompletableFuture<IRequester> shutdown(boolean force) {
+    public void close() throws Exception {
         if (null != client) {
-            try {
-                client.close();
-            } catch (IOException e) {
-                log.error("关闭HTTP请求器异常", e);
-            }
+            client.close();
         }
-        return CompletableFuture.completedFuture(this);
     }
 
     private interface Task<T> {

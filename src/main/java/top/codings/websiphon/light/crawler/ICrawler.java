@@ -10,12 +10,12 @@ public interface ICrawler {
     /**
      * 启动爬虫
      */
-    CompletableFuture<ICrawler> startup();
+    CompletableFuture<? extends ICrawler> startup();
 
     /**
      * 关闭爬虫
      */
-    CompletableFuture<ICrawler> shutdown();
+    CompletableFuture<? extends ICrawler> shutdown();
 
     /**
      * 将任务推送给爬虫

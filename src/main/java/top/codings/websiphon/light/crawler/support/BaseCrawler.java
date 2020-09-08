@@ -8,6 +8,8 @@ import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
+import top.codings.websiphon.light.function.ComponentCloseAware;
+import top.codings.websiphon.light.function.ComponentInitAware;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.CombineRequester;
@@ -16,6 +18,7 @@ import top.codings.websiphon.light.requester.support.NettyRequester;
 import java.net.Proxy;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 public class BaseCrawler extends CombineCrawler {
@@ -123,51 +126,77 @@ public class BaseCrawler extends CombineCrawler {
     }
 
     @Override
-    public CompletableFuture<ICrawler> startup() {
-        if (begin) {
-            throw new FrameworkException("爬虫正在执行启动/关闭操作，请勿重复执行");
-        }
-        synchronized (this) {
-            if (begin) {
-                throw new FrameworkException("爬虫正在执行启动/关闭操作，请勿重复执行");
+    public CompletableFuture<? extends ICrawler> startup() {
+        return CompletableFuture.supplyAsync(() -> {
+            if (!stop) {
+                throw new FrameworkException("爬虫已启动");
             }
-            begin = true;
-        }
-        CompletableFuture<ICrawler> completableFuture = CompletableFuture.completedFuture(this);
-        if (responseHandler instanceof QueueResponseHandler) {
-            // 启动响应处理器
-            completableFuture = completableFuture.thenCombineAsync(((QueueResponseHandler) responseHandler).startup(this), (crawler, iResponseHandler) -> crawler);
-        }
-        return completableFuture
-                .thenCombineAsync(getRequester().init(), (crawler, o) -> crawler)
-                .whenCompleteAsync((o, o2) -> stop = begin = false);
+            synchronized (this) {
+                if (begin) {
+                    throw new FrameworkException("爬虫正在执行启动/关闭操作，请勿重复执行");
+                }
+                begin = true;
+            }
+            if (responseHandler instanceof ComponentInitAware) {
+                // 启动响应处理器
+                try {
+                    ((ComponentInitAware) responseHandler).init(this);
+                } catch (Exception e) {
+                    throw new FrameworkException("初始化响应管理器失败", e);
+                }
+            }
+            IRequester requester = getRequester();
+            if (requester instanceof ComponentInitAware) {
+                try {
+                    ((ComponentInitAware) requester).init(this);
+                } catch (Exception e) {
+                    throw new FrameworkException("初始化请求器失败", e);
+                }
+            }
+            return this;
+        }).whenCompleteAsync((baseCrawler, throwable) -> {
+            stop = begin = false;
+            if (throwable != null) {
+                try {
+                    shutdown().get();
+                } catch (Exception e) {
+                }
+            }
+        });
     }
 
     @Override
     public CompletableFuture<ICrawler> shutdown() {
-        if (begin) {
-            throw new FrameworkException("爬虫正在执行启动/关闭操作，请勿重复执行");
-        }
-        synchronized (this) {
-            if (begin) {
-                throw new FrameworkException("爬虫正在执行启动/关闭操作，请勿重复执行");
+        return CompletableFuture.supplyAsync(() -> {
+            if (stop) {
+                throw new FrameworkException("爬虫已关闭");
             }
-            begin = true;
-        }
-        Optional.ofNullable(config.getShutdownHook()).ifPresent(action -> action.accept(this.wrapper()));
-        CompletableFuture<ICrawler> completableFuture = CompletableFuture.completedFuture(this.wrapper());
-        boolean force = true;
-        IRequester requester = getRequester();
-        if (requester != null) {
-            completableFuture = completableFuture.thenCombineAsync(requester.shutdown(force), (crawler, o) -> crawler);
-        }
-        if (null != responseHandler) {
-            if (responseHandler instanceof QueueResponseHandler) {
-                completableFuture = completableFuture.thenCombineAsync(((QueueResponseHandler) responseHandler).shutdown(force), (crawler, iResponseHandler) -> crawler);
+            synchronized (this) {
+                if (begin) {
+                    throw new FrameworkException("爬虫正在执行启动/关闭操作，请勿重复执行");
+                }
+                begin = true;
             }
-        }
-        stop = true;
-        begin = false;
-        return completableFuture;
+            IRequester requester = getRequester();
+            if (requester != null && requester instanceof ComponentCloseAware) {
+                try {
+                    ((ComponentCloseAware) requester).close();
+                } catch (Exception e) {
+                    throw new FrameworkException("关闭请求器失败", e);
+                }
+            }
+            if (null != responseHandler && responseHandler instanceof ComponentCloseAware) {
+                try {
+                    ((ComponentCloseAware) responseHandler).close();
+                } catch (Exception e) {
+                    throw new FrameworkException("关闭响应管理器失败", e);
+                }
+            }
+            Optional.ofNullable(config.getShutdownHook()).ifPresent(action -> action.accept(this.wrapper()));
+            stop = true;
+            begin = false;
+            return this.wrapper();
+        });
+
     }
 }

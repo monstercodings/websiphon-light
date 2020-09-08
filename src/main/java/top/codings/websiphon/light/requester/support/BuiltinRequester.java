@@ -8,7 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import top.codings.websiphon.light.config.RequesterConfig;
-import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.bean.PluginType;
@@ -65,28 +65,23 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     }
 
     @Override
-    public CompletableFuture<IRequester> init() {
-        try {
-            HttpClient.Builder builder = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()))
-                    .followRedirects(HttpClient.Redirect.NORMAL);
-            if (config.getProxy() != null) {
-                ProxySelector selector = ProxySelector.of((InetSocketAddress) config.getProxy().address());
-                builder.proxy(selector);
-            }
-            if (config.isIgnoreSslError()) {
-                SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
-                sslContext.init(null, BuiltinTrustManager.get(), null);
-                builder.sslContext(sslContext)
-                        .sslParameters(new SSLParameters());
-            }
-            //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
-//                                    .authenticator(Authenticator.getDefault());
-            client = builder.build();
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(new FrameworkException("初始化请求器失败", e));
+    public void init(ICrawler crawler) throws Exception {
+        HttpClient.Builder builder = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()))
+                .followRedirects(HttpClient.Redirect.NORMAL);
+        if (config.getProxy() != null) {
+            ProxySelector selector = ProxySelector.of((InetSocketAddress) config.getProxy().address());
+            builder.proxy(selector);
         }
-        return CompletableFuture.completedFuture(this);
+        if (config.isIgnoreSslError()) {
+            SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
+            sslContext.init(null, BuiltinTrustManager.get(), null);
+            builder.sslContext(sslContext)
+                    .sslParameters(new SSLParameters());
+        }
+        //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
+//                                    .authenticator(Authenticator.getDefault());
+        client = builder.build();
     }
 
     @Override
@@ -218,8 +213,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     }
 
     @Override
-    public CompletableFuture<IRequester> shutdown(boolean force) {
-        return CompletableFuture.supplyAsync(() -> this);
+    public void close() {
     }
 
     @Override

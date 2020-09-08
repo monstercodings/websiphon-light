@@ -10,11 +10,6 @@ import java.util.concurrent.CompletableFuture;
 
 public interface IRequester<T extends IRequest> {
     /**
-     * 初始化请求器
-     */
-    CompletableFuture<IRequester> init();
-
-    /**
      * 发起异步网络请求
      *
      * @param request 请求对象
@@ -25,13 +20,6 @@ public interface IRequester<T extends IRequest> {
     T create(String url);
 
     T create(String url, Object userData);
-
-    /**
-     * 关闭请求器
-     *
-     * @param force
-     */
-    CompletableFuture<IRequester> shutdown(boolean force);
 
     /**
      * 查看请求器是否繁忙

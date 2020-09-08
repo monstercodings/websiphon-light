@@ -3,11 +3,17 @@ package top.codings.websiphon.light.function.processor;
 import io.netty.util.internal.TypeParameterMatcher;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.error.StopHandlErrorException;
+import top.codings.websiphon.light.function.ComponentCloseAware;
+import top.codings.websiphon.light.function.ComponentErrorAware;
+import top.codings.websiphon.light.function.ComponentInitAware;
+import top.codings.websiphon.light.loader.anno.Shared;
 import top.codings.websiphon.light.requester.IRequest;
 
 @Slf4j
-public abstract class AbstractProcessor<T> implements IProcessor, ProcessInitAware, ProcessCloseAware, ProcessErrorAware {
+public abstract class AbstractProcessor<T> implements IProcessor, ComponentInitAware<ICrawler>, ComponentCloseAware, ComponentErrorAware {
+    private transient volatile boolean init;
     private TypeParameterMatcher matcher;
     private AbstractProcessor root;
     private AbstractProcessor prev;
@@ -28,7 +34,16 @@ public abstract class AbstractProcessor<T> implements IProcessor, ProcessInitAwa
     public final void initByHandler(ICrawler crawler) throws Exception {
         AbstractProcessor p;
         for (p = root; p != null; p = p.next) {
-            p.init(crawler);
+            synchronized (p) {
+                // 如果已初始化并且不是共享组件则抛出异常
+                if (p.init && p.getClass().getDeclaredAnnotation(Shared.class) == null) {
+                    throw new FrameworkException(String.format(
+                            "[%s]为非共享组件，如需让多个爬虫共享该组件，请使用@Shared注解", p.getClass().getName()
+                    ));
+                }
+                p.init(crawler);
+                p.init = true;
+            }
         }
     }
 
@@ -77,7 +92,7 @@ public abstract class AbstractProcessor<T> implements IProcessor, ProcessInitAwa
     }
 
     @Override
-    public final void doOnError(IRequest request, Throwable throwable, ICrawler crawler) throws StopHandlErrorException {
+    public final void doOnError(Throwable throwable, IRequest request, ICrawler crawler) throws StopHandlErrorException {
         boolean transmit = true;
         for (AbstractProcessor p = root; p != null; p = p.next) {
             if (p.isMatch(request, throwable)) {

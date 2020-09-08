@@ -4,12 +4,16 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.error.StopHandlErrorException;
-import top.codings.websiphon.light.function.processor.*;
+import top.codings.websiphon.light.function.ComponentCloseAware;
+import top.codings.websiphon.light.function.ComponentErrorAware;
+import top.codings.websiphon.light.function.ComponentInitAware;
+import top.codings.websiphon.light.function.processor.AbstractProcessor;
+import top.codings.websiphon.light.function.processor.IProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 /**
@@ -22,48 +26,54 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
     private IProcessor processor;
 
     @Override
-    public CompletableFuture<IResponseHandler> startup(ICrawler crawler) {
-        CompletableFuture completableFuture = CompletableFuture.supplyAsync(() -> {
-            processor = processorChain();
-            successes.add(request -> {
-                IRequest.RequestResult result = request.getRequestResult();
-                Object data = result.get();
-                processor.process(data, request, crawler);
-                return request;
-            });
-            errors.add(request -> {
-                try {
-                    if (processor instanceof ProcessErrorAware) {
-                        ((ProcessErrorAware) processor).doOnError(
-                                request, request.getRequestResult().cause(), crawler);
-                    }
-                    return request;
-                } catch (StopHandlErrorException e) {
-                    return null;
-                }
-            });
-            errors.add(request -> {
-                IRequest.RequestResult result = request.getRequestResult();
-                Throwable throwable = result.cause();
-                handleError(request, throwable, crawler);
-                return request;
-            });
-            if (processor instanceof AbstractProcessor) {
-                try {
-                    ((AbstractProcessor) processor).initByHandler(crawler);
-                } catch (Exception e) {
-                    throw new FrameworkException("ProcessInitAware类型处理器初始化异常", e);
-                }
-            } else if (processor instanceof ProcessInitAware) {
-                try {
-                    ((ProcessInitAware) processor).init(crawler);
-                } catch (Exception e) {
-                    throw new FrameworkException("ProcessInitAware类型处理器初始化异常", e);
-                }
-            }
-            return this;
+    public void init(ICrawler crawler) throws Exception {
+        super.init(crawler);
+        if (!tryInit()) {
+            return;
+        }
+        processor = processorChain();
+        successes.add(request -> {
+            IRequest.RequestResult result = request.getRequestResult();
+            Object data = result.get();
+            processor.process(data, request, crawler);
+            return request;
         });
-        return completableFuture.thenCombineAsync(super.startup(crawler), (o, o2) -> o);
+        errors.add(request -> {
+            try {
+                if (processor instanceof ComponentErrorAware) {
+                    ((ComponentErrorAware) processor).doOnError(
+                            request.getRequestResult().cause(), request, crawler);
+                }
+                return request;
+            } catch (StopHandlErrorException e) {
+                return null;
+            }
+        });
+        errors.add(request -> {
+            IRequest.RequestResult result = request.getRequestResult();
+            Throwable throwable = result.cause();
+            handleError(request, throwable, crawler);
+            return request;
+        });
+        if (processor instanceof AbstractProcessor) {
+            try {
+                ((AbstractProcessor) processor).initByHandler(crawler);
+            } catch (Exception e) {
+                throw new FrameworkException("ProcessInitAware类型处理器初始化异常", e);
+            }
+        } else if (processor instanceof ComponentInitAware) {
+            try {
+                ((ComponentInitAware) processor).init(crawler);
+            } catch (Exception e) {
+                throw new FrameworkException("ProcessInitAware类型处理器初始化异常", e);
+            }
+        }
+    }
+
+    private transient AtomicBoolean firstInit = new AtomicBoolean(true);
+
+    private boolean tryInit() {
+        return firstInit.compareAndExchange(true, false);
     }
 
     @Override
@@ -103,23 +113,21 @@ public abstract class SimpleResponseHandler extends ChainResponseHandler {
     }
 
     @Override
-    public CompletableFuture<IResponseHandler> shutdown(boolean force) {
-        return super.shutdown(force).thenCombineAsync(CompletableFuture.supplyAsync(() -> {
-            if (processor instanceof AbstractProcessor) {
-                try {
-                    ((AbstractProcessor) processor).closeByHandler();
-                } catch (Exception e) {
-                    log.error("ProcessCloseAware类型处理器关闭时发生异常");
-                }
-            } else if (processor instanceof ProcessCloseAware) {
-                try {
-                    ((ProcessCloseAware) processor).close();
-                } catch (Exception e) {
-                    log.error("ProcessCloseAware类型处理器关闭时发生异常");
-                }
+    public void close() throws Exception {
+        super.close();
+        if (processor instanceof AbstractProcessor) {
+            try {
+                ((AbstractProcessor) processor).closeByHandler();
+            } catch (Exception e) {
+                log.error("ProcessCloseAware类型处理器关闭时发生异常");
             }
-            return this;
-        }), (iResponseHandler, simpleResponseHandler) -> simpleResponseHandler);
+        } else if (processor instanceof ComponentCloseAware) {
+            try {
+                ((ComponentCloseAware) processor).close();
+            } catch (Exception e) {
+                log.error("ProcessCloseAware类型处理器关闭时发生异常");
+            }
+        }
     }
 
     /**

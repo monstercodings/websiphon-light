@@ -1,23 +1,69 @@
-package top.codings.websiphon.light.test;
+package top.codings.websiphon.light.test.integrity;
 
+import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.bean.QpsDataStat;
 import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.support.*;
 import top.codings.websiphon.light.function.handler.AbstractResponseHandler;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
-import top.codings.websiphon.light.test.dependent.TestResponseHandler;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 
+@Slf4j
 public class RegressionTesting {
     public static void main(String[] args) throws Exception {
 //        demo();
-        test1();
+//        test1();
+        log.debug("开始");
+        IResponseHandler responseHandler = new SimpleTestRespHandler();
+        ICrawler crawler1 = createCrawler("1号", new TestResponseHandler());
+        crawler1.startup().whenCompleteAsync((crawler, throwable) -> {
+            if (throwable != null) {
+                log.error("爬虫启动失败", throwable);
+            } else {
+                log.debug("[{}]爬虫启动", crawler.config().getName());
+                crawler.push("https://www.baidu.com");
+            }
+        });
+        ICrawler crawler2 = createCrawler("2号", new TestResponseHandler());
+        crawler2.startup().whenCompleteAsync((crawler, throwable) -> {
+            if (throwable != null) {
+                log.error("爬虫启动失败", throwable);
+            } else {
+                log.debug("[{}]爬虫启动", crawler.config().getName());
+                crawler.push("https://www.baidu.com");
+            }
+        });
+
+//        new Thread(()->{
+//            try {
+//                TimeUnit.SECONDS.sleep(3);
+//                log.debug("开始关机");
+//                crawler1.shutdown();
+//                crawler2.shutdown();
+//            } catch (Exception e) {
+//
+//            }
+//        }).start();
+    }
+
+    private static ICrawler createCrawler(String name, IResponseHandler responseHandler) {
+        ICrawler crawler = new BaseCrawler(
+                CrawlerConfig.builder()
+                        .name(name)
+                        .build(),
+                responseHandler
+        )
+                .wrapBy(new FakeCrawler())
+                .wrapBy(new FiltrateCrawler())
+                .wrapBy(new RateLimitCrawler());
+        return crawler;
     }
 
     public static void demo() throws Exception {

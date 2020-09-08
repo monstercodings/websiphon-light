@@ -62,7 +62,6 @@ public class RateLimitCrawler extends CombineCrawler implements RateLimitableCra
                 taskTimeoutMillis,
                 timeoutHandler
         );
-        requester.setCrawler(this);
         requester.setLimitMemory(limitMemory);
         setRequester(requester);
     }

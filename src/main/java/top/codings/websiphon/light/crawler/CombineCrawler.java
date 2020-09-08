@@ -16,13 +16,13 @@ public abstract class CombineCrawler implements ICrawler {
     protected CrawlerConfig config;
 
     @Override
-    public CompletableFuture<ICrawler> startup() {
+    public CompletableFuture<? extends ICrawler> startup() {
         if (next != null) return next.startup();
         throw new FrameworkException("非代理爬虫必须实现自身方法");
     }
 
     @Override
-    public CompletableFuture<ICrawler> shutdown() {
+    public CompletableFuture<? extends ICrawler> shutdown() {
         if (next != null) return next.shutdown();
         throw new FrameworkException("非代理爬虫必须实现自身方法");
     }

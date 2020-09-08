@@ -5,8 +5,8 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.bean.DataStat;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.IRequester;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -32,42 +32,38 @@ public class StatRequester extends CombineRequester<IRequest> {
     }
 
     @Override
-    public CompletableFuture<IRequester> init() {
-        CompletableFuture completableFuture = CompletableFuture.supplyAsync(() -> {
-            if (dataStat.getRefreshTimestamp() > 0) {
-                exe = Executors.newSingleThreadExecutor(new DefaultThreadFactory(NAME));
-                exe.submit(() -> {
-                    while (!Thread.currentThread().isInterrupted()) {
-                        try {
-                            TimeUnit.MILLISECONDS.sleep(dataStat.getRefreshTimestamp());
-                            if (debug) {
-                                log.info("\n{}", JSON.toJSONString(dataStat.output(), true));
-                            }
-                            dataStat.refresh();
-                        } catch (InterruptedException e) {
-                            return;
-                        } catch (Exception e) {
-                            log.error("爬虫统计异常", e);
+    public void init(ICrawler crawler) throws Exception {
+        if (dataStat.getRefreshTimestamp() > 0) {
+            exe = Executors.newSingleThreadExecutor(new DefaultThreadFactory(NAME));
+            exe.submit(() -> {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(dataStat.getRefreshTimestamp());
+                        if (debug) {
+                            log.info("\n{}", JSON.toJSONString(dataStat.output(), true));
                         }
+                        dataStat.refresh();
+                    } catch (InterruptedException e) {
+                        return;
+                    } catch (Exception e) {
+                        log.error("爬虫统计异常", e);
                     }
-                });
-            }
-            return this;
-        });
-        return completableFuture.thenCombineAsync(super.init(), (o, o2) -> o2);
+                }
+            });
+        }
+        super.init(crawler);
     }
 
     @Override
-    public CompletableFuture<IRequester> shutdown(boolean force) {
+    public void close() throws Exception {
         if (null != exe) {
-            if (force) exe.shutdownNow();
-            else exe.shutdown();
+            exe.shutdownNow();
             try {
-                exe.awaitTermination(1, TimeUnit.MINUTES);
+                exe.awaitTermination(15, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
             }
         }
-        return super.shutdown(force);
+        super.close();
     }
 
     @Override

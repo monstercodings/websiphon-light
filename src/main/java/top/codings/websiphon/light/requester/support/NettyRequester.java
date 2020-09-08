@@ -15,7 +15,6 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.traffic.GlobalTrafficShapingHandler;
 import io.netty.handler.traffic.TrafficCounter;
 import io.netty.util.AttributeKey;
-import io.netty.util.concurrent.Future;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -23,12 +22,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.ssl.SSLContextBuilder;
 import top.codings.websiphon.light.config.RequesterConfig;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.SSLContext;
@@ -102,7 +101,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     }
 
     @Override
-    public CompletableFuture<IRequester> init() {
+    public void init(ICrawler crawler) throws Exception {
         bootstrap = new Bootstrap();
         workerGroup = new NioEventLoopGroup();
         bootstrap
@@ -118,16 +117,11 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                     }
                 })
         ;
-        try {
-            if (config.isIgnoreSslError()) {
-                sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
-            } else {
-                sslContext = SSLContext.getDefault();
-            }
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(new FrameworkException("初始化SSL套件失败", e));
+        if (config.isIgnoreSslError()) {
+            sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
+        } else {
+            sslContext = SSLContext.getDefault();
         }
-        return CompletableFuture.completedFuture(this);
     }
 
     @Override
@@ -436,33 +430,22 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     }
 
     @Override
-    public CompletableFuture<IRequester> shutdown(boolean force) {
-        CompletableFuture future1 = CompletableFuture.supplyAsync(() -> {
-            if (null == executor) {
-                return null;
-            }
+    public void close() {
+        if (null != executor) {
             trafficHandler.release();
-            executor.shutdown();
+            executor.shutdownNow();
             try {
-                executor.awaitTermination(1, TimeUnit.MINUTES);
+                executor.awaitTermination(15, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
             }
-            return null;
-        });
-        CompletableFuture future2 = CompletableFuture.supplyAsync(() -> {
-            if (workerGroup == null) {
-                return null;
-            }
-            Future f = workerGroup.shutdownGracefully();
-            try {
-                f.await(1, TimeUnit.MINUTES);
-            } catch (InterruptedException e) {
-            }
+            executor = null;
+            trafficHandler = null;
+        }
+        if (workerGroup != null) {
+            workerGroup.shutdownGracefully().awaitUninterruptibly();
             sslContext = null;
             workerGroup = null;
-            return null;
-        });
-        return CompletableFuture.allOf(future1, future2).thenApplyAsync(aVoid -> this);
+        }
     }
 
     public TrafficCounter getTrafficCounter() {

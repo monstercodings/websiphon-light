@@ -1,5 +1,6 @@
 package top.codings.websiphon.light.test.dependent;
 
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
@@ -26,10 +27,9 @@ public class DoNothingRequester extends CombineRequester {
     }
 
     @Override
-    public CompletableFuture<IRequester> init() {
+    public void init(ICrawler crawler) {
         exe.submit(() -> {
         });
-        return CompletableFuture.completedFuture(this);
     }
 
     @Override
@@ -80,13 +80,11 @@ public class DoNothingRequester extends CombineRequester {
     }
 
     @Override
-    public CompletableFuture<IRequester> shutdown(boolean force) {
-        exe.shutdown();
+    public void close() {
+        exe.shutdownNow();
         try {
             exe.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
-            e.printStackTrace();
         }
-        return CompletableFuture.completedFuture(this);
     }
 }
