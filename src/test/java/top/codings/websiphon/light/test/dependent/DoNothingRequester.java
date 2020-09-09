@@ -3,7 +3,6 @@ package top.codings.websiphon.light.test.dependent;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.BaseRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 
@@ -27,7 +26,10 @@ public class DoNothingRequester extends CombineRequester {
     }
 
     @Override
-    public void init(ICrawler crawler) {
+    protected void init(ICrawler crawler, int index) {
+        if (index > 0) {
+            return;
+        }
         exe.submit(() -> {
         });
     }
@@ -80,7 +82,10 @@ public class DoNothingRequester extends CombineRequester {
     }
 
     @Override
-    public void close() {
+    protected void close(int index) {
+        if (index != 0) {
+            return;
+        }
         exe.shutdownNow();
         try {
             exe.awaitTermination(1, TimeUnit.MINUTES);

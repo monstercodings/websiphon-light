@@ -50,6 +50,6 @@ public class TestResponseHandler extends StatResponseHandler {
         } finally {
             lock.unlock();
         }
-        crawler.shutdown();
+//        crawler.shutdown();
     }
 }

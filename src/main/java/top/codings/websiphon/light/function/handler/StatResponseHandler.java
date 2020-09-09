@@ -10,7 +10,7 @@ import top.codings.websiphon.light.requester.IRequest;
  * 需要配合具备统计功能的爬虫和请求器来使用
  * 否则单独使用不生效
  */
-public abstract class StatResponseHandler extends SimpleResponseHandler {
+public abstract class StatResponseHandler extends ChainResponseHandler {
 
     /*@Override
     protected AbstractProcessor processorChain() {

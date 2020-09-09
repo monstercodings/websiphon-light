@@ -11,9 +11,11 @@ import top.codings.websiphon.light.function.ComponentInitAware;
 import top.codings.websiphon.light.loader.anno.Shared;
 import top.codings.websiphon.light.requester.IRequest;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 @Slf4j
 public abstract class AbstractProcessor<T> implements IProcessor, ComponentInitAware<ICrawler>, ComponentCloseAware, ComponentErrorAware {
-    private transient volatile boolean init;
+    private transient AtomicInteger initIndex = new AtomicInteger(0);
     private TypeParameterMatcher matcher;
     private AbstractProcessor root;
     private AbstractProcessor prev;
@@ -31,35 +33,35 @@ public abstract class AbstractProcessor<T> implements IProcessor, ComponentInitA
         return processor;
     }
 
-    public final void initByHandler(ICrawler crawler) throws Exception {
+    @Override
+    public final void init(ICrawler crawler) throws Exception {
         AbstractProcessor p;
         for (p = root; p != null; p = p.next) {
-            synchronized (p) {
-                // 如果已初始化并且不是共享组件则抛出异常
-                if (p.init && p.getClass().getDeclaredAnnotation(Shared.class) == null) {
-                    throw new FrameworkException(String.format(
-                            "[%s]为非共享组件，如需让多个爬虫共享该组件，请使用@Shared注解", p.getClass().getName()
-                    ));
-                }
-                p.init(crawler);
-                p.init = true;
+            if (p.initIndex.compareAndSet(0, 1)) {
+                p.init(crawler, 0);
+                continue;
             }
+            if (p.getClass().getDeclaredAnnotation(Shared.class) == null) {
+                throw new FrameworkException(String.format(
+                        "[%s]为非共享组件，如需让多个爬虫共享该组件，请使用@Shared注解", p.getClass().getName()
+                ));
+            }
+            p.init(crawler, p.initIndex.getAndIncrement());
         }
     }
 
-    @Override
-    public void init(ICrawler crawler) throws Exception {
+    protected void init(ICrawler crawler, int index) throws Exception {
     }
 
-    public final void closeByHandler() throws Exception {
+    @Override
+    public final void close() throws Exception {
         AbstractProcessor p;
         for (p = root; p != null; p = p.next) {
-            p.close();
+            p.close(p.initIndex.decrementAndGet());
         }
     }
 
-    @Override
-    public void close() throws Exception {
+    protected void close(int index) throws Exception {
     }
 
     @Override
@@ -79,37 +81,27 @@ public abstract class AbstractProcessor<T> implements IProcessor, ComponentInitA
         }
     }
 
-    protected boolean isMatch(IRequest request, Throwable throwable) {
+    /**
+     * 是否应该使用该处理器对异常进行处理
+     *
+     * @param request
+     * @param throwable
+     * @return
+     */
+    protected boolean isMatchHandleError(IRequest request, Throwable throwable) {
         return false;
     }
 
-    protected boolean isTransmit(IRequest request, Throwable throwable, ICrawler crawler) {
-        return true;
-    }
-
-    protected void whenError(IRequest request, Throwable throwable, ICrawler crawler) {
+    protected void whenError(Throwable throwable, IRequest request, ICrawler crawler) throws StopHandlErrorException {
 
     }
 
     @Override
     public final void doOnError(Throwable throwable, IRequest request, ICrawler crawler) throws StopHandlErrorException {
-        boolean transmit = true;
         for (AbstractProcessor p = root; p != null; p = p.next) {
-            if (p.isMatch(request, throwable)) {
-                try {
-                    p.whenError(request, throwable, crawler);
-                    transmit = p.isTransmit(request, throwable, crawler);
-                    if (!transmit) {
-                        break;
-                    }
-                } catch (Exception e) {
-                    log.error("处理器执行异常处理失败", e);
-                    continue;
-                }
+            if (p.isMatchHandleError(request, throwable)) {
+                p.whenError(throwable, request, crawler);
             }
-        }
-        if (!transmit) {
-            throw new StopHandlErrorException();
         }
     }
 

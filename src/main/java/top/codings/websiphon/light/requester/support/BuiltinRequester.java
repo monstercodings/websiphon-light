@@ -11,6 +11,7 @@ import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.anno.Shared;
 import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
@@ -34,7 +35,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-@PluginDefinition(name = "内置请求器", description = "基于JDK11内置的Http请求器定制化而成，特点是使用简单方便，但是可配置选项较少", version = "0.0.1", type = PluginType.REQUESTER)
+@Shared
+@PluginDefinition(
+        name = "内置请求器",
+        description = "基于JDK11内置的Http请求器定制化而成，特点是使用简单方便，但是可配置选项较少",
+        version = "0.0.1",
+        type = PluginType.REQUESTER)
 public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     @Setter
     @Getter
@@ -65,7 +71,10 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     }
 
     @Override
-    public void init(ICrawler crawler) throws Exception {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
         HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()))
                 .followRedirects(HttpClient.Redirect.NORMAL);
@@ -213,7 +222,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     }
 
     @Override
-    public void close() {
+    protected void close(int index) {
     }
 
     @Override

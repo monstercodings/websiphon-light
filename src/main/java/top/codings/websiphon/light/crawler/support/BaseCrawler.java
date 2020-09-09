@@ -6,10 +6,10 @@ import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
-import top.codings.websiphon.light.function.handler.IResponseHandler;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.function.ComponentCloseAware;
 import top.codings.websiphon.light.function.ComponentInitAware;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.CombineRequester;
@@ -18,7 +18,6 @@ import top.codings.websiphon.light.requester.support.NettyRequester;
 import java.net.Proxy;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 @Slf4j
 public class BaseCrawler extends CombineCrawler {
@@ -141,6 +140,8 @@ public class BaseCrawler extends CombineCrawler {
                 // 启动响应处理器
                 try {
                     ((ComponentInitAware) responseHandler).init(this);
+                } catch (FrameworkException e) {
+                    throw e;
                 } catch (Exception e) {
                     throw new FrameworkException("初始化响应管理器失败", e);
                 }
@@ -149,6 +150,8 @@ public class BaseCrawler extends CombineCrawler {
             if (requester instanceof ComponentInitAware) {
                 try {
                     ((ComponentInitAware) requester).init(this);
+                } catch (FrameworkException e) {
+                    throw e;
                 } catch (Exception e) {
                     throw new FrameworkException("初始化请求器失败", e);
                 }
@@ -181,6 +184,8 @@ public class BaseCrawler extends CombineCrawler {
             if (requester != null && requester instanceof ComponentCloseAware) {
                 try {
                     ((ComponentCloseAware) requester).close();
+                } catch (FrameworkException e) {
+                    throw e;
                 } catch (Exception e) {
                     throw new FrameworkException("关闭请求器失败", e);
                 }
@@ -188,6 +193,8 @@ public class BaseCrawler extends CombineCrawler {
             if (null != responseHandler && responseHandler instanceof ComponentCloseAware) {
                 try {
                     ((ComponentCloseAware) responseHandler).close();
+                } catch (FrameworkException e) {
+                    throw e;
                 } catch (Exception e) {
                     throw new FrameworkException("关闭响应管理器失败", e);
                 }

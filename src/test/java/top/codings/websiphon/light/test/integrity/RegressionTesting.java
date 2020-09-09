@@ -10,55 +10,64 @@ import top.codings.websiphon.light.function.handler.AbstractResponseHandler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
+import top.codings.websiphon.light.requester.support.ApacheRequester;
+import top.codings.websiphon.light.requester.support.BuiltinRequester;
+import top.codings.websiphon.light.requester.support.CombineRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class RegressionTesting {
     public static void main(String[] args) throws Exception {
 //        demo();
 //        test1();
-        log.debug("开始");
-        IResponseHandler responseHandler = new SimpleTestRespHandler();
-        ICrawler crawler1 = createCrawler("1号", new TestResponseHandler());
+        CombineRequester requester = new BuiltinRequester();
+        IResponseHandler responseHandler = new TestResponseHandler();
+        ICrawler crawler1 = createCrawler("1号", responseHandler, requester);
         crawler1.startup().whenCompleteAsync((crawler, throwable) -> {
             if (throwable != null) {
-                log.error("爬虫启动失败", throwable);
+                log.error("爬虫启动失败", throwable.getCause());
             } else {
                 log.debug("[{}]爬虫启动", crawler.config().getName());
                 crawler.push("https://www.baidu.com");
+                crawler.push("https://www.baidu.com");
+                crawler.push("https://www.baidu.com");
             }
         });
-        ICrawler crawler2 = createCrawler("2号", new TestResponseHandler());
+        ICrawler crawler2 = createCrawler("2号", responseHandler, requester);
         crawler2.startup().whenCompleteAsync((crawler, throwable) -> {
             if (throwable != null) {
-                log.error("爬虫启动失败", throwable);
+                log.error("爬虫启动失败", throwable.getCause());
             } else {
                 log.debug("[{}]爬虫启动", crawler.config().getName());
+                crawler.push("https://www.baidu.com");
+                crawler.push("https://www.baidu.com");
                 crawler.push("https://www.baidu.com");
             }
         });
 
-//        new Thread(()->{
-//            try {
-//                TimeUnit.SECONDS.sleep(3);
-//                log.debug("开始关机");
-//                crawler1.shutdown();
-//                crawler2.shutdown();
-//            } catch (Exception e) {
-//
-//            }
-//        }).start();
+        new Thread(() -> {
+            try {
+                TimeUnit.SECONDS.sleep(3);
+                log.debug("开始关机");
+                crawler1.shutdown();
+                crawler2.shutdown();
+            } catch (Exception e) {
+
+            }
+        }).start();
     }
 
-    private static ICrawler createCrawler(String name, IResponseHandler responseHandler) {
+    private static ICrawler createCrawler(String name, IResponseHandler responseHandler, CombineRequester requester) {
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
                         .name(name)
                         .build(),
-                responseHandler
+                responseHandler,
+                requester
         )
                 .wrapBy(new FakeCrawler())
                 .wrapBy(new FiltrateCrawler())

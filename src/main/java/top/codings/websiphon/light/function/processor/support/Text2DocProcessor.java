@@ -41,14 +41,20 @@ public class Text2DocProcessor extends AbstractProcessor<String> {
     }
 
     @Override
-    public void init(ICrawler crawler) throws Exception {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
         if (log.isTraceEnabled()) {
             log.trace("{}初始化", this.getClass().getSimpleName());
         }
     }
 
     @Override
-    public void close() throws Exception {
+    protected void close(int index) throws Exception {
+        if (index != 0) {
+            return;
+        }
         if (log.isTraceEnabled()) {
             log.trace("{}被关闭", this.getClass().getSimpleName());
         }

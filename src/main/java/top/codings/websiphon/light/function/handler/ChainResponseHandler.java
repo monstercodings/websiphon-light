@@ -1,153 +1,129 @@
 package top.codings.websiphon.light.function.handler;
 
-import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
-import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.error.StopHandlErrorException;
 import top.codings.websiphon.light.function.ComponentCloseAware;
+import top.codings.websiphon.light.function.ComponentErrorAware;
 import top.codings.websiphon.light.function.ComponentInitAware;
+import top.codings.websiphon.light.function.processor.IProcessor;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 /**
- * 处理器链的响应处理器
+ * 具备链式调用能力的分化处理响应管理器
  */
 @Slf4j
-public abstract class ChainResponseHandler
-        extends AbstractResponseHandler
-        implements QueueResponseHandler, ComponentInitAware<ICrawler>, ComponentCloseAware {
-    private final static String NAME = "processors";
-    private ExecutorService exe;
-    private LinkedTransferQueue<IRequest> queue;
-    private Semaphore token;
-    private Lock lock = new ReentrantLock();
-//    private ICrawler crawler;
-    /**
-     * 用于防止非原子操作造成的任务完成情况误判
-     */
-    private volatile boolean normal = true;
+public abstract class ChainResponseHandler extends AsyncResponseHandler {
+    protected List<Function<IRequest, IRequest>> successes = new CopyOnWriteArrayList<>();
+    protected List<Function<IRequest, IRequest>> errors = new CopyOnWriteArrayList<>();
+    private IProcessor processor;
 
     @Override
-    public void init(ICrawler crawler) throws Exception {
-        super.init(crawler);
-        if (!tryInit()) {
-            log.warn("该管理器已初始化");
-            return;
-        }
-        queue = new LinkedTransferQueue<>();
-        exe = Executors.newCachedThreadPool(new DefaultThreadFactory(NAME));
-        token = new Semaphore(config.getMaxConcurrentProcessing() - 1);
-        exe.submit(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    // 先阻塞获取任务
-                    IRequest request = queue.poll(30, TimeUnit.SECONDS);
-                    if (null == request) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("当前剩余响应 -> {}", queue.size());
+    protected void init(ICrawler crawler, int index) throws Exception {
+        super.init(crawler, index);
+        // 利用锁机制确保处理器链能够串行初始化
+        // 避免并发初始化造成的初始化索引无法对应关闭索引的问题
+        synchronized (this) {
+            // 确保响应管理器只初始化一次
+            if (index == 0) {
+                processor = processorChain();
+                successes.add(request -> {
+                    IRequest.RequestResult result = request.getRequestResult();
+                    Object data = result.get();
+                    processor.process(data, request, crawler);
+                    return request;
+                });
+                errors.add(request -> {
+                    try {
+                        if (processor instanceof ComponentErrorAware) {
+                            ((ComponentErrorAware) processor).doOnError(
+                                    request.getRequestResult().cause(), request, crawler);
                         }
-                        continue;
+                        return request;
+                    } catch (StopHandlErrorException e) {
+                        return null;
+                    } catch (Exception e) {
+                        throw new FrameworkException(e);
                     }
-                    // 获取令牌
-                    token.acquire();
-                    // 将标记位恢复
-                    normal = true;
-                    exe.submit(() -> {
-                        long start = System.currentTimeMillis();
-                        try {
-                            request.setStatus(IRequest.Status.PROCESS);
-                            beforeHandle(request, crawler);
-                            handle(request, crawler);
-                            afterHandle(request, crawler);
-                        } catch (Exception e) {
-                            log.error("响应处理发生异常", e);
-                        } finally {
-                            String useTime = String.format("%.3f", (System.currentTimeMillis() - start) / 1000f);
-                            request.setStatus(IRequest.Status.FINISH);
-                            token.release();
-                            request.release();
-                            if (log.isTraceEnabled()) {
-                                log.trace("当次处理耗时 [{}s] | 令牌余量 [{}]", useTime, token.availablePermits());
-                            }
-                            // 检查爬虫是否已空闲
-                            if (crawler != null && !crawler.isBusy() && lock.tryLock()) {
-                                try {
-                                    if (!crawler.isBusy()) {
-                                        ICrawler c;
-                                        if (!CombineCrawler.class.isAssignableFrom(crawler.getClass())) {
-                                            c = crawler;
-                                        } else {
-                                            CombineCrawler n = (CombineCrawler) crawler;
-                                            c = n.wrapper();
-                                        }
-                                        whenFinish(c);
-                                    }
-                                } finally {
-                                    lock.unlock();
-                                }
-                            }
-                        }
-                    });
-                } catch (InterruptedException e) {
+                });
+                errors.add(request -> {
+                    IRequest.RequestResult result = request.getRequestResult();
+                    Throwable throwable = result.cause();
+                    handleError(request, throwable, crawler);
+                    return request;
+                });
+            }
+            if (processor instanceof ComponentInitAware) {
+                ((ComponentInitAware) processor).init(crawler);
+            }
+        }
+    }
+
+    @Override
+    protected void handle(IRequest request, ICrawler crawler) throws Exception {
+        IRequest.RequestResult result = request.getRequestResult();
+        if (result.isSucceed()) {
+            handleSucceed(request);
+        } else {
+            handleError(request);
+        }
+    }
+
+    private void handleSucceed(IRequest request) {
+        IRequest req = request;
+        for (Function<IRequest, IRequest> success : successes) {
+            if ((req = success.apply(req)) == null) {
+                break;
+            }
+        }
+    }
+
+    private void handleError(IRequest request) throws Exception {
+        try {
+            IRequest req = request;
+            for (Function<IRequest, IRequest> error : errors) {
+                if ((req = error.apply(req)) == null) {
                     break;
-                } catch (Exception e) {
-                    token.release();
-                    log.error("从响应队列获取任务失败", e);
                 }
             }
-            if (log.isDebugEnabled()) {
-                log.debug("消费请求响应线程停止运行");
+        } catch (FrameworkException e) {
+            if (e.getCause() instanceof Exception) {
+                throw (Exception) e.getCause();
             }
-        });
-    }
-
-    private transient AtomicBoolean firstInit = new AtomicBoolean(true);
-    private boolean tryInit() {
-        return firstInit.compareAndExchange(true, false);
-    }
-
-    @Override
-    public void close() throws Exception {
-        if (null != exe) {
-            exe.shutdownNow();
-            try {
-                exe.awaitTermination(1, TimeUnit.MINUTES);
-            } catch (InterruptedException e) {
-            }
+            throw e;
         }
-        if (null != queue) queue.clear();
     }
 
     @Override
-    public void handle(IRequest request) {
-        normal = false;
-        queue.offer(request);
+    protected void close(int index) throws Exception {
+        super.close(index);
+        if (processor instanceof ComponentCloseAware) {
+            ((ComponentCloseAware) processor).close();
+        }
+        if (index == 0) {
+            successes.clear();
+            errors.clear();
+            processor = null;
+        }
     }
 
-    @Override
-    public boolean isBusy() {
-        return !(normal &&
-                token.availablePermits() == config.getMaxConcurrentProcessing() - 1 &&
-                queue.isEmpty()
-        );
-    }
+    /**
+     * 返回处理器链
+     *
+     * @return
+     */
+    protected abstract IProcessor processorChain();
 
-    /*@Override
-    public void setCrawler(ICrawler crawler) {
-        this.crawler = crawler;
-    }*/
-
-    protected void beforeHandle(IRequest request, ICrawler crawler) throws Exception {
-
-    }
-
-    protected void afterHandle(IRequest request, ICrawler crawler) throws Exception {
-
-    }
-
-    protected abstract void handle(IRequest request, ICrawler crawler) throws Exception;
+    /**
+     * 处理异常状态
+     *
+     * @param request
+     * @param throwable
+     */
+    protected abstract void handleError(IRequest request, Throwable throwable, ICrawler crawler);
 }

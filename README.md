@@ -1,7 +1,7 @@
 # 轻量化的爬虫框架
 
 > 属于websiphon的轻量化版本  
-> 当前版本 0.1.0
+> 当前版本 0.1.1
 
 ### 简要介绍
 
@@ -10,6 +10,7 @@
     * 可自行扩展开发与websiphon标准版相同的功能
     * 基于ClassLoader实现了插件化功能
     * 依赖第三方jar包较少，体积小
+    * 使用共享机制保证业务处理的并发安全警告
     * 基于jdk11编译，利用其新特性提高运行效率
     * 内置m3u8视频下载处理器
 
@@ -31,12 +32,12 @@ ICrawler crawler = new BaseCrawler(
         }
 );
 crawler.startup()
-       .whenCompleteAsync((crawler, throwable) -> {
+       .whenCompleteAsync((c, throwable) -> {
                              if (throwable != null) {
                                  log.error("爬虫启动失败", throwable);
                              } else {
-                                 log.debug("[{}]爬虫启动成功", crawler.config().getName());
-                                 crawler.push("https://www.baidu.com");
+                                 log.debug("[{}]爬虫启动成功", c.config().getName());
+                                 c.push("https://www.baidu.com");
                              }
                          });
 // 主动关闭爬虫

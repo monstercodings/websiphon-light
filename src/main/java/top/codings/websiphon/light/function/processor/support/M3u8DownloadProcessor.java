@@ -59,8 +59,8 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
     }
 
     @Override
-    public void init(ICrawler crawler) throws Exception {
-        if (stackClass == null) {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index == 0) {
             stackClass = getStackClass();
         }
     }
@@ -107,12 +107,12 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
     }
 
     @Override
-    protected boolean isMatch(IRequest request, Throwable throwable) {
+    protected boolean isMatchHandleError(IRequest request, Throwable throwable) {
         return request.getUserData() instanceof UserDataStack;
     }
 
     @Override
-    protected void whenError(IRequest request, Throwable throwable, ICrawler crawler) {
+    protected void whenError(Throwable throwable, IRequest request, ICrawler crawler) {
         request.setUserData(((UserDataStack) request.getUserData()).userData);
     }
 

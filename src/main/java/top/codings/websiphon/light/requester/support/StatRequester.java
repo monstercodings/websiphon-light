@@ -32,7 +32,10 @@ public class StatRequester extends CombineRequester<IRequest> {
     }
 
     @Override
-    public void init(ICrawler crawler) throws Exception {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
         if (dataStat.getRefreshTimestamp() > 0) {
             exe = Executors.newSingleThreadExecutor(new DefaultThreadFactory(NAME));
             exe.submit(() -> {
@@ -51,11 +54,13 @@ public class StatRequester extends CombineRequester<IRequest> {
                 }
             });
         }
-        super.init(crawler);
     }
 
     @Override
-    public void close() throws Exception {
+    protected void close(int index) throws Exception {
+        if (index != 0) {
+            return;
+        }
         if (null != exe) {
             exe.shutdownNow();
             try {

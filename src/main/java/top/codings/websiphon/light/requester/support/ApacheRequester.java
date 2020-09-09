@@ -34,6 +34,7 @@ import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.anno.Shared;
 import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
@@ -51,6 +52,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
+@Shared
 @PluginDefinition(name = "Apache请求器", description = "基于Apache的Httpclient定制化的请求器，支持Apache httpclient的特性", version = "0.0.1", type = PluginType.REQUESTER)
 public class ApacheRequester extends CombineRequester<ApacheRequest> {
     @Getter
@@ -85,7 +87,10 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
     }
 
     @Override
-    public void init(ICrawler crawler) throws Exception {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
         decoderRegistry = RegistryBuilder.<InputStreamFactory>create()
                 .register("gzip", GZIPInputStreamFactory.getInstance())
                 .register("x-gzip", GZIPInputStreamFactory.getInstance())
@@ -160,7 +165,10 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
     }
 
     @Override
-    public void close() throws Exception {
+    protected void close(int index) throws Exception {
+        if (index != 0) {
+            return;
+        }
         if (null != client) {
             client.close();
         }

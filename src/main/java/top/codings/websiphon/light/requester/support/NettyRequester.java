@@ -26,6 +26,7 @@ import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.anno.Shared;
 import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
@@ -43,6 +44,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
+@Shared
 @PluginDefinition(
         name = "Netty请求器",
         description = "基于Netty4而定制化开发的请求器，具备效率高，内存占用少，配置丰富，可限制上传下载速度等特点",
@@ -101,7 +103,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     }
 
     @Override
-    public void init(ICrawler crawler) throws Exception {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
         bootstrap = new Bootstrap();
         workerGroup = new NioEventLoopGroup();
         bootstrap
@@ -430,7 +435,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     }
 
     @Override
-    public void close() {
+    protected void close(int index) {
+        if (index != 0) {
+            return;
+        }
         if (null != executor) {
             trafficHandler.release();
             executor.shutdownNow();

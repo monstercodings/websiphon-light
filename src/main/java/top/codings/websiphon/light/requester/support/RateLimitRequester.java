@@ -52,7 +52,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
     }
 
     @Override
-    public void init(ICrawler iCrawler) throws Exception {
+    protected void init(ICrawler iCrawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
         if (iCrawler instanceof CombineCrawler) {
             this.crawler = ((CombineCrawler) iCrawler).wrapper();
         } else {
@@ -153,7 +156,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                 log.debug("监测请求任务超时线程停止运行");
             }
         });
-        super.init(crawler);
     }
 
     private void verifyBusy() {
@@ -178,7 +180,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
     }
 
     @Override
-    public void close() throws Exception {
+    protected void close(int index) throws Exception {
+        if (index != 0) {
+            return;
+        }
         if (null != exe) {
             exe.shutdownNow();
             try {
