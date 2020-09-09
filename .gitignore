@@ -19,6 +19,7 @@
 /.mvn/
 *.cmd
 mvnw
+/data/
 /log/
 /logs/
 /out/

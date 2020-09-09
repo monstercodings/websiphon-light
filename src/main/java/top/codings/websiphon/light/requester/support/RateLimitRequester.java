@@ -1,20 +1,23 @@
 package top.codings.websiphon.light.requester.support;
 
+import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.SyncRequester;
 
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 
+import static top.codings.websiphon.light.requester.IRequest.Status.*;
+
 @Slf4j
-public class RateLimitRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
+public class RateLimitRequester extends CombineRequester<IRequest> {
+    private final static String NAME = "ratelimit";
     /**
      * 限制内存占用的阈值
      * 设置<=0的话则不做限制
@@ -24,23 +27,24 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     private Semaphore token;
     private int maxNetworkConcurrency;
     private LinkedTransferQueue<IRequest> queue;
+    private int taskTimeoutMillis;
     private DelayQueue<Inner> timeoutQueue;
     private ExecutorService exe;
     private BiConsumer<IRequest, ICrawler> timeoutHandler;
-    @Setter
     private CombineCrawler crawler;
     /**
      * 用于防止非原子操作造成的任务完成情况误判
      */
     private volatile boolean normal;
 
-    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency) {
-        this(requester, maxNetworkConcurrency, null);
+    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, int taskTimeoutMillis) {
+        this(requester, maxNetworkConcurrency, taskTimeoutMillis, null);
     }
 
-    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, BiConsumer<IRequest, ICrawler> timeoutHandler) {
+    public RateLimitRequester(CombineRequester requester, int maxNetworkConcurrency, int taskTimeoutMillis, BiConsumer<IRequest, ICrawler> timeoutHandler) {
         super(requester);
         this.maxNetworkConcurrency = maxNetworkConcurrency;
+        this.taskTimeoutMillis = taskTimeoutMillis;
         if (maxNetworkConcurrency > 0) {
             token = new Semaphore(maxNetworkConcurrency);
         }
@@ -48,13 +52,21 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     }
 
     @Override
-    public void init() {
+    protected void init(ICrawler iCrawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
+        if (iCrawler instanceof CombineCrawler) {
+            this.crawler = ((CombineCrawler) iCrawler).wrapper();
+        } else {
+            throw new FrameworkException("爬虫对象必须是可组合类型");
+        }
         queue = new LinkedTransferQueue<>();
         timeoutQueue = new DelayQueue<>();
-        exe = Executors.newFixedThreadPool(2);
+        exe = Executors.newFixedThreadPool(2, new DefaultThreadFactory(NAME));
         exe.submit(() -> {
             // TODO 未来做智能阈值
-            while (!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted() && !shutdown) {
                 try {
                     if (limitMemory > 0) {
                         checkMemory();
@@ -71,10 +83,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     }
                     // 将标记位恢复
                     normal = true;
-                    request.setStatus(IRequest.Status.REQUEST);
-                    Inner inner = new Inner(request);
+                    request.setStatus(REQUEST);
+                    Inner inner = new Inner(request, taskTimeoutMillis);
                     timeoutQueue.offer(inner);
-                    requester.executeAsync(request)
+                    requester.execute(request)
                             .whenCompleteAsync((aVoid, throwable) -> {
                                 if (timeoutQueue.remove(inner)) {
                                     if (null != token) {
@@ -86,7 +98,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                             })
                     ;
                 } catch (InterruptedException e) {
-                    return;
+                    break;
                 } catch (Exception e) {
                     if (null != token) {
                         token.release();
@@ -94,11 +106,17 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     log.error("获取待处理请求对象失败", e);
                 }
             }
+            if (log.isDebugEnabled()) {
+                log.debug("消费请求任务线程停止运行");
+            }
         });
         exe.submit(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted() && !shutdown) {
                 try {
-                    Inner inner = timeoutQueue.take();
+                    Inner inner = timeoutQueue.poll(30, TimeUnit.SECONDS);
+                    if (inner == null) {
+                        continue;
+                    }
                     /*String url = "";
                     if (inner.request instanceof BuiltinRequest) {
                         url = ((HttpRequest) inner.request.getHttpRequest()).uri().toString();
@@ -112,32 +130,32 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                     inner.request.lock();
                     try {
                         IRequest.Status status = inner.request.getStatus();
-                        switch (status) {
-                            case WAIT, READY, REQUEST -> {
-                                if (null != timeoutHandler) {
-                                    try {
-                                        timeoutHandler.accept(inner.request, crawler.wrapper());
-                                    } catch (Exception e) {
-                                        log.error("请求对象超时处理失败", e);
-                                    }
+                        if (status == WAIT || status == READY || status == REQUEST) {
+                            if (null != timeoutHandler) {
+                                try {
+                                    timeoutHandler.accept(inner.request, crawler.wrapper());
+                                } catch (Exception e) {
+                                    log.error("请求对象超时处理失败", e);
                                 }
-//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
-                                inner.request.setStatus(IRequest.Status.TIMEOUT);
-//                                inner.request.release();
                             }
+//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
+                            inner.request.setStatus(IRequest.Status.TIMEOUT);
+//                                inner.request.release();
                         }
                     } finally {
                         inner.request.unlock();
                     }
                     verifyBusy();
                 } catch (InterruptedException e) {
-                    return;
+                    break;
                 } catch (Exception e) {
                     log.error("请求对象超时检查失败", e);
                 }
             }
+            if (log.isDebugEnabled()) {
+                log.debug("监测请求任务超时线程停止运行");
+            }
         });
-        super.init();
     }
 
     private void verifyBusy() {
@@ -151,28 +169,33 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     }
 
     @Override
-    public CompletableFuture<IRequest> executeAsync(IRequest request) {
+    public CompletableFuture<IRequest> execute(IRequest request) {
         normal = false;
-        request.setStatus(IRequest.Status.WAIT);
-        queue.offer(request);
-        return CompletableFuture.completedFuture(request);
+        request.setStatus(READY);
+        return CompletableFuture.supplyAsync(() -> {
+            request.setStatus(WAIT);
+            queue.offer(request);
+            return request;
+        });
     }
 
     @Override
-    public void shutdown(boolean force) {
+    protected void close(int index) throws Exception {
+        if (index != 0) {
+            return;
+        }
         if (null != exe) {
-            if (force) exe.shutdownNow();
-            else exe.shutdown();
+            exe.shutdownNow();
+            try {
+                exe.awaitTermination(1, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+            }
         }
         if (null != queue) {
             queue.clear();
         }
-        requester.shutdown(force);
-    }
-
-    @Override
-    public void setResponseHandler(IResponseHandler responseHandler) {
-        ((SyncRequester) requester).setResponseHandler(responseHandler);
+        shutdown = true;
+        super.close();
     }
 
     @Override
@@ -185,11 +208,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
                 tokenStatu &&
                 queue.isEmpty())
                 ;
-    }
-
-    @Override
-    public void setResponseHandler(QueueResponseHandler responseHandler) {
-        ((AsyncRequester) requester).setResponseHandler(responseHandler);
     }
 
     private void checkMemory() throws InterruptedException {
@@ -230,7 +248,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
     }
 
     private static class Inner implements Delayed {
-        int timeout = 30000;
         IRequest request;
         long trigger;
 
@@ -238,7 +255,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements As
             request = null;
         }
 
-        public Inner(IRequest request) {
+        public Inner(IRequest request, int timeout) {
             this.request = request;
             trigger = System.currentTimeMillis() + timeout;
         }

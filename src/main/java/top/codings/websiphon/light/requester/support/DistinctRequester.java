@@ -5,16 +5,12 @@ import com.google.common.hash.Funnels;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.function.filter.IFilter;
-import top.codings.websiphon.light.function.handler.IResponseHandler;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
 import top.codings.websiphon.light.requester.IRequest;
-import top.codings.websiphon.light.requester.SyncRequester;
 
 import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 
-public class DistinctRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest>, SyncRequester<IRequest> {
+public class DistinctRequester extends CombineRequester<IRequest> {
     @Getter
     private IFilter<String, Boolean> filter;
 
@@ -52,21 +48,11 @@ public class DistinctRequester extends CombineRequester<IRequest> implements Asy
     }
 
     @Override
-    public CompletableFuture<IRequest> executeAsync(IRequest request) {
+    public CompletableFuture<IRequest> execute(IRequest request) {
         String url = request.getUri().toString();
         if (StringUtils.isNotBlank(url) && filter.put(url)) {
-            return requester.executeAsync(request);
+            return requester.execute(request);
         }
-        return CompletableFuture.completedFuture(request);
-    }
-
-    @Override
-    public void setResponseHandler(IResponseHandler responseHandler) {
-        ((SyncRequester) requester).setResponseHandler(responseHandler);
-    }
-
-    @Override
-    public void setResponseHandler(QueueResponseHandler responseHandler) {
-        ((AsyncRequester) requester).setResponseHandler(responseHandler);
+        return CompletableFuture.supplyAsync(() -> request);
     }
 }

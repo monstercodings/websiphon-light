@@ -4,10 +4,12 @@ import top.codings.websiphon.light.config.CrawlerConfig;
 import top.codings.websiphon.light.config.RegistryConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 
-public interface IRegistry {
-    void startup();
+import java.util.concurrent.CompletableFuture;
 
-    void shutdown(boolean force);
+public interface IRegistry {
+    CompletableFuture<IRegistry> startup();
+
+    CompletableFuture<IRegistry> shutdown(boolean force);
 
     void setConfig(CrawlerConfig crawlerConfig, RegistryConfig registryConfig);
 

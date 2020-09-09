@@ -1,10 +1,13 @@
 package top.codings.websiphon.light.crawler;
 
 import top.codings.websiphon.light.config.CrawlerConfig;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 
+import java.net.Proxy;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public abstract class CombineCrawler implements ICrawler {
     protected CombineCrawler prev;
@@ -13,34 +16,83 @@ public abstract class CombineCrawler implements ICrawler {
     protected CrawlerConfig config;
 
     @Override
-    public void startup() {
-        if (next != null) next.startup();
+    public CompletableFuture<? extends ICrawler> startup() {
+        if (next != null) return next.startup();
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
     }
 
     @Override
-    public void shutdown() {
-        if (next != null) next.shutdown();
+    public CompletableFuture<? extends ICrawler> shutdown() {
+        if (next != null) return next.shutdown();
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
     }
 
     @Override
     public void push(IRequest request) {
-        if (next != null) next.push(request);
+        if (next != null) {
+            next.push(request);
+            return;
+        }
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
     }
 
     @Override
     public void push(String url) {
-        if (next != null) next.push(url);
+        if (next != null) {
+            next.push(url);
+            return;
+        }
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
+    public void push(String url, Proxy proxy) {
+        if (next != null) {
+            next.push(url, proxy);
+            return;
+        }
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
     }
 
     @Override
     public void push(String url, Object userData) {
-        if (next != null) next.push(url, userData);
+        if (next != null) {
+            next.push(url, userData);
+            return;
+        }
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
+    public void push(String url, Proxy proxy, Object userData) {
+        if (next != null) {
+            next.push(url, proxy, userData);
+            return;
+        }
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
     }
 
     @Override
     public boolean isBusy() {
         if (next != null) return next.isBusy();
         return false;
+    }
+
+    @Override
+    public boolean isStop() {
+        if (next != null) return next.isStop();
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
+    public boolean isRunning() {
+        if (next != null) return next.isRunning();
+        throw new FrameworkException("非代理爬虫必须实现自身方法");
+    }
+
+    @Override
+    public CrawlerConfig config() {
+        return config;
     }
 
     protected final CombineRequester getRequester() {

@@ -7,13 +7,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.config.RequesterConfig;
+import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.function.handler.IResponseHandler;
+import top.codings.websiphon.light.loader.anno.PluginDefinition;
+import top.codings.websiphon.light.loader.anno.Shared;
+import top.codings.websiphon.light.loader.bean.PluginType;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.*;
+import java.net.InetSocketAddress;
+import java.net.ProxySelector;
 import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -25,48 +31,70 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-public class BuiltinRequester extends CombineRequester<BuiltinRequest> implements AsyncRequester<BuiltinRequest> {
+@Shared
+@PluginDefinition(
+        name = "内置请求器",
+        description = "基于JDK11内置的Http请求器定制化而成，特点是使用简单方便，但是可配置选项较少",
+        version = "0.0.1",
+        type = PluginType.REQUESTER)
+public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
     @Setter
     @Getter
-    private QueueResponseHandler responseHandler;
+    private IResponseHandler responseHandler;
     private HttpClient client;
-    private ExecutorService executorService;
+    private RequesterConfig config;
 
     private String contentTypePattern = "([a-z]+/[^;\\.]+);?\\s?(charset=)?(.*)";
     private Pattern pattern = Pattern.compile(contentTypePattern, Pattern.CASE_INSENSITIVE);
 
     public BuiltinRequester() {
+        this(null);
+    }
+
+    public BuiltinRequester(RequesterConfig config) {
         super(null);
+        if (config == null) {
+            config = RequesterConfig.builder()
+                    .connectTimeoutMillis(30000)
+                    .idleTimeMillis(30000)
+                    .ignoreSslError(false)
+                    .networkErrorStrategy(NetworkErrorStrategy.RESPONSE)
+                    .maxContentLength(Integer.MAX_VALUE)
+                    .build();
+        }
+        setStrategy(config.getNetworkErrorStrategy());
+        this.config = config;
     }
 
     @Override
-    public void init() {
-        try {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
+        HttpClient.Builder builder = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(config.getConnectTimeoutMillis()))
+                .followRedirects(HttpClient.Redirect.NORMAL);
+        if (config.getProxy() != null) {
+            ProxySelector selector = ProxySelector.of((InetSocketAddress) config.getProxy().address());
+            builder.proxy(selector);
+        }
+        if (config.isIgnoreSslError()) {
             SSLContext sslContext = SSLContextBuilder.create().loadTrustMaterial((x509Certificates, s) -> true).build();
             sslContext.init(null, BuiltinTrustManager.get(), null);
-//            executorService = Executors.newSingleThreadExecutor();
-            client = HttpClient.newBuilder()
-//                    .executor(executorService)
-                    .connectTimeout(Duration.ofSeconds(6))
-//                    .version(HttpClient.Version.HTTP_1_1)
-                    .followRedirects(HttpClient.Redirect.NORMAL)
-                    .sslContext(sslContext)
-                    .sslParameters(new SSLParameters())
-                    //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
-//                                    .authenticator(Authenticator.getDefault())
-                    .build();
-        } catch (Exception e) {
-            throw new RuntimeException("初始化请求器失败", e);
+            builder.sslContext(sslContext)
+                    .sslParameters(new SSLParameters());
         }
+        //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
+//                                    .authenticator(Authenticator.getDefault());
+        client = builder.build();
     }
 
     @Override
-    public CompletableFuture<BuiltinRequest> executeAsync(final BuiltinRequest request) {
+    public CompletableFuture<BuiltinRequest> execute(final BuiltinRequest request) {
         try {
             return client
                     .sendAsync(request.httpRequest, HttpResponse.BodyHandlers.ofByteArray())
@@ -82,21 +110,24 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                                 request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
                                 return;
                             }
-                            request.requestResult.setCode(httpResponse.statusCode());
-                            request.setStatus(IRequest.Status.RESPONSE);
                             if (httpResponse != null) {
+                                request.setStatus(IRequest.Status.RESPONSE);
+                                request.requestResult.setCode(httpResponse.statusCode());
                                 handleSucceed(request, httpResponse);
                             } else if (throwable != null) {
                                 handleThrowable(request, throwable);
                             } else {
                                 log.error("出现了两参数均为空的异常现象!");
+                                request.setStatus(IRequest.Status.ERROR);
                                 request.requestResult.setSucceed(false);
                                 request.requestResult.setThrowable(new RuntimeException("出现了两参数均为空的异常现象"));
                             }
                             if (throwable != null && getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
                                 return;
                             }
-                            responseHandler.handle(request);
+                            if (null != responseHandler) {
+                                responseHandler.handle(request);
+                            }
                         } finally {
                             request.unlock();
                         }
@@ -105,10 +136,12 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
                     ;
         } catch (Exception e) {
             log.error("内置请求器异常", e);
-            request.requestResult = new BuiltinRequest.RequestResult();
-            request.requestResult.setSucceed(false);
-            request.requestResult.setThrowable(e);
-            return CompletableFuture.completedFuture(request);
+            return CompletableFuture.supplyAsync(() -> {
+                request.requestResult = new BuiltinRequest.RequestResult();
+                request.requestResult.setSucceed(false);
+                request.requestResult.setThrowable(e);
+                return request;
+            });
         }
     }
 
@@ -184,20 +217,12 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> implement
 
     private void handleThrowable(BuiltinRequest request, Throwable throwable) {
         request.requestResult.setSucceed(false);
+        request.setStatus(IRequest.Status.ERROR);
         request.requestResult.setThrowable(throwable.getCause());
     }
 
     @Override
-    public void shutdown(boolean force) {
-        if (null != executorService) {
-            if (force)
-                executorService.shutdownNow();
-            else
-                executorService.shutdown();
-        }
-        if (responseHandler != null) {
-            responseHandler.shutdown(true);
-        }
+    protected void close(int index) {
     }
 
     @Override

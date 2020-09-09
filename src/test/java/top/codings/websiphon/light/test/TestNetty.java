@@ -11,8 +11,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.TooLongFrameException;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.ssl.SslHandler;
-import io.netty.handler.timeout.IdleStateEvent;
-import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.http.entity.ContentType;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.junit.platform.commons.util.StringUtils;
@@ -23,7 +21,8 @@ import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class TestNetty {
     public static void main(String[] args) throws Exception {
@@ -40,18 +39,18 @@ public class TestNetty {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
                         socketChannel.closeFuture().addListener((ChannelFutureListener) channelFuture -> {
-                            System.out.println("通道关闭");
+//                            System.out.println("通道关闭");
                             workerGroup.shutdownGracefully();
                         });
                         socketChannel.pipeline()
-                                .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, 3, TimeUnit.SECONDS) {
+                                /*.addLast("@IdleStateHandler", new IdleStateHandler(0, 0, 3, TimeUnit.SECONDS) {
                                     @Override
                                     protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
                                         System.out.println("触发Idle事件 首次:" + evt.isFirst() + " | 状态:" + evt.state().name());
                                         ctx.close();
                                     }
-                                })
-                                .addLast(new HttpClientCodec())
+                                })*/
+                                .addLast("@HttpClientCodec", new HttpClientCodec())
                                 .addLast(new HttpContentDecompressor())
                                 .addLast(new HttpObjectAggregator(1024 * 512))
                                 .addLast(new SimpleChannelInboundHandler<HttpResponse>() {
@@ -69,7 +68,7 @@ public class TestNetty {
                                             return;
                                         }
                                         String contentTypeStr = httpResponse.headers().get("content-type");
-                                        System.out.println("Content-Type:" + contentTypeStr);
+//                                        System.out.println("Content-Type:" + contentTypeStr);
                                         byte[] body;
                                         if (httpResponse instanceof FullHttpResponse) {
                                             FullHttpResponse response = (FullHttpResponse) httpResponse;
@@ -97,7 +96,9 @@ public class TestNetty {
                                         }
                                         if (mimeType.contains("text")) {
                                             // 文本解析
-                                            System.out.println(new String(body, charset));
+                                            String content = new String(body, charset);
+                                            content = content.length() > 10 ? content.substring(0, 10) : content;
+                                            System.out.println(String.format("[%s] %s\n%s", Thread.currentThread().getName(), content, "------------------------------------------------------------"));
 //                                            request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
 //                                            request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
                                         } else if (mimeType.contains("json")) {
@@ -110,7 +111,8 @@ public class TestNetty {
 //                                            request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
 //                                            request.requestResult.setData(body);
                                         }
-                                        System.out.println("------------------------------------------------------------");
+                                        channelHandlerContext.close();
+//                                        System.out.println("------------------------------------------------------------");
                                     }
 
                                     @Override
@@ -120,7 +122,6 @@ public class TestNetty {
                                             ctx.close();
                                             return;
                                         }
-                                        super.exceptionCaught(ctx, cause);
                                     }
                                 })
                         ;
@@ -140,37 +141,42 @@ public class TestNetty {
         }
         final String path = StringUtils.isBlank(uri.getPath()) ? "/" : uri.getPath();
         int finalPort = port;
-        bootstrap.connect(host, port).addListener((ChannelFutureListener) channelFuture -> {
-            if (channelFuture.isSuccess()) {
-                if (scheme.equalsIgnoreCase("https")) {
-                    InetSocketAddress address = (InetSocketAddress) channelFuture.channel().remoteAddress();
-                    SSLEngine sslEngine = sslContext.createSSLEngine(address.getHostString(), address.getPort());
-                    sslEngine.setUseClientMode(true);
-                    channelFuture.channel().pipeline().addAfter("@IdleStateHandler", "@SSL", new SslHandler(sslEngine));
-                }
+        ExecutorService exe = Executors.newCachedThreadPool();
+        for (int i = 0; i < 30; i++) {
+            exe.submit(() -> {
+                bootstrap.connect(host, finalPort).addListener((ChannelFutureListener) channelFuture -> {
+                    if (channelFuture.isSuccess()) {
+                        if (scheme.equalsIgnoreCase("https")) {
+                            InetSocketAddress address = (InetSocketAddress) channelFuture.channel().remoteAddress();
+                            SSLEngine sslEngine = sslContext.createSSLEngine(address.getHostString(), address.getPort());
+                            sslEngine.setUseClientMode(true);
+                            channelFuture.channel().pipeline().addBefore("@HttpClientCodec", "@SSL", new SslHandler(sslEngine));
+                        }
 
-                HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path, Unpooled.EMPTY_BUFFER);
-                request.headers()
-                        .set("Host", host + ":" + finalPort)
-                        .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3")
-                        .set("Accept-Encoding", "gzip, deflate, compress")
-                        .set("Accept-Language", "zh-CN,zh;q=0.9")
-                        .set("Cache-Control", "no-cache")
-                        .set("Connection", "keep-alive")
-                        .set("DNT", "1")
-                        .set("Origin", uri.toString())
-                        .set("Referer", uri.toString())
-                        .set("Upgrade-Insecure-Requests", "1")
-                        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36");
-                channelFuture.channel().writeAndFlush(request).addListener((ChannelFutureListener) channelFuture1 -> {
-                    if (!channelFuture1.isSuccess()) {
-                        System.err.println("发送请求失败");
+                        HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path, Unpooled.EMPTY_BUFFER);
+                        request.headers()
+                                .set("Host", host + ":" + finalPort)
+                                .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3")
+                                .set("Accept-Encoding", "gzip, deflate, compress")
+                                .set("Accept-Language", "zh-CN,zh;q=0.9")
+                                .set("Cache-Control", "no-cache")
+                                .set("Connection", "keep-alive")
+                                .set("DNT", "1")
+                                .set("Origin", uri.toString())
+                                .set("Referer", uri.toString())
+                                .set("Upgrade-Insecure-Requests", "1")
+                                .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36");
+                        channelFuture.channel().writeAndFlush(request).addListener((ChannelFutureListener) channelFuture1 -> {
+                            if (!channelFuture1.isSuccess()) {
+                                System.err.println("发送请求失败");
+                            }
+                        });
+                    } else {
+                        System.err.println("连接失败");
+                        channelFuture.channel().close();
                     }
                 });
-            } else {
-                System.err.println("连接失败");
-                channelFuture.channel().close();
-            }
-        });
+            });
+        }
     }
 }

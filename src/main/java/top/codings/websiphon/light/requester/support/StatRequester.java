@@ -1,11 +1,11 @@
 package top.codings.websiphon.light.requester.support;
 
 import com.alibaba.fastjson.JSON;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.bean.DataStat;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
-import top.codings.websiphon.light.requester.AsyncRequester;
+import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.CompletableFuture;
@@ -14,7 +14,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class StatRequester extends CombineRequester<IRequest> implements AsyncRequester<IRequest> {
+public class StatRequester extends CombineRequester<IRequest> {
+    private final static String NAME = "统计请求器";
     @Setter
     private boolean debug;
     private DataStat dataStat;
@@ -31,9 +32,12 @@ public class StatRequester extends CombineRequester<IRequest> implements AsyncRe
     }
 
     @Override
-    public void init() {
+    protected void init(ICrawler crawler, int index) throws Exception {
+        if (index > 0) {
+            return;
+        }
         if (dataStat.getRefreshTimestamp() > 0) {
-            exe = Executors.newSingleThreadExecutor();
+            exe = Executors.newSingleThreadExecutor(new DefaultThreadFactory(NAME));
             exe.submit(() -> {
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
@@ -50,21 +54,26 @@ public class StatRequester extends CombineRequester<IRequest> implements AsyncRe
                 }
             });
         }
-        super.init();
     }
 
     @Override
-    public void shutdown(boolean force) {
-        if (null != exe) {
-            if (force) exe.shutdownNow();
-            else exe.shutdown();
+    protected void close(int index) throws Exception {
+        if (index != 0) {
+            return;
         }
-        super.shutdown(force);
+        if (null != exe) {
+            exe.shutdownNow();
+            try {
+                exe.awaitTermination(15, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+            }
+        }
+        super.close();
     }
 
     @Override
-    public CompletableFuture<IRequest> executeAsync(IRequest request) {
-        return requester.executeAsync(request).whenCompleteAsync((req, throwable) -> {
+    public CompletableFuture<IRequest> execute(IRequest request) {
+        return super.execute(request).whenCompleteAsync((req, throwable) -> {
             dataStat.getRequestCountTotal().increment();
             if (req.getRequestResult().isSucceed()) {
                 dataStat.getNetworkRequestSuccessCountTotal().increment();
@@ -72,8 +81,4 @@ public class StatRequester extends CombineRequester<IRequest> implements AsyncRe
         });
     }
 
-    @Override
-    public void setResponseHandler(QueueResponseHandler responseHandler) {
-        ((AsyncRequester) requester).setResponseHandler(responseHandler);
-    }
 }

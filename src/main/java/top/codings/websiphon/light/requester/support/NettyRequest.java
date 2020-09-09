@@ -4,6 +4,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.net.URI;
 import java.util.Map;
 
 @Getter
@@ -18,11 +19,17 @@ public class NettyRequest extends BaseRequest<HttpRequest> {
     public NettyRequest(HttpRequest httpRequest, Object userData) {
         this.httpRequest = httpRequest;
         this.userData = userData;
+        this.uri = URI.create(httpRequest.uri());
     }
 
     @Override
     public void setHeaders(Map<String, Object> headers) {
-        headers.forEach((s, o) -> httpRequest.headers().set(s, o));
+        headers.forEach((s, o) -> {
+            if (httpRequest.headers().contains(s)) {
+                return;
+            }
+            httpRequest.headers().set(s, o);
+        });
     }
 
     @Override
