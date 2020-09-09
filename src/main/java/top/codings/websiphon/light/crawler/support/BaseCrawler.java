@@ -18,6 +18,8 @@ import top.codings.websiphon.light.requester.support.NettyRequester;
 import java.net.Proxy;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Slf4j
 public class BaseCrawler extends CombineCrawler {
@@ -126,6 +128,7 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public CompletableFuture<? extends ICrawler> startup() {
+        ExecutorService exe = Executors.newSingleThreadExecutor();
         return CompletableFuture.supplyAsync(() -> {
             if (!stop) {
                 throw new FrameworkException("爬虫已启动");
@@ -157,7 +160,8 @@ public class BaseCrawler extends CombineCrawler {
                 }
             }
             return this;
-        }).whenCompleteAsync((baseCrawler, throwable) -> {
+        }, exe).whenCompleteAsync((baseCrawler, throwable) -> {
+            exe.shutdownNow();
             stop = begin = false;
             if (throwable != null) {
                 try {

@@ -20,6 +20,7 @@ public class TestResponseHandler extends StatResponseHandler {
     private static Text2DocProcessor text2DocProcessor = new Text2DocProcessor();
     private static M3u8DownloadProcessor m3u8DownloadProcessor = new M3u8DownloadProcessor(true);
     private static M3u8ReceiveProcessor m3u8ReceiveProcessor = new M3u8ReceiveProcessor();
+    private static BytesProcessor bytesProcessor = new BytesProcessor();
 
     @Override
     protected IProcessor processorChain() {
@@ -27,6 +28,7 @@ public class TestResponseHandler extends StatResponseHandler {
                 .next(text2DocProcessor)
                 .next(m3u8DownloadProcessor)
                 .next(m3u8ReceiveProcessor)
+                .next(bytesProcessor)
                 ;
     }
 

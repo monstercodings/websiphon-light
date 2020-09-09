@@ -17,14 +17,20 @@ import top.codings.websiphon.light.requester.support.NettyRequester;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class RegressionTesting {
     public static void main(String[] args) throws Exception {
 //        demo();
 //        test1();
-        CombineRequester requester = new BuiltinRequester();
+        CombineRequester requester = new NettyRequester(RequesterConfig.builder()
+                .connectTimeoutMillis(300000)
+                .ignoreSslError(true)
+                .maxContentLength(Integer.MAX_VALUE)
+                .idleTimeMillis(300000)
+                .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080)))
+                .networkErrorStrategy(IRequester.NetworkErrorStrategy.RESPONSE)
+                .build());
         IResponseHandler responseHandler = new TestResponseHandler();
         ICrawler crawler1 = createCrawler("1号", responseHandler, requester);
         crawler1.startup().whenCompleteAsync((crawler, throwable) -> {
@@ -32,12 +38,15 @@ public class RegressionTesting {
                 log.error("爬虫启动失败", throwable.getCause());
             } else {
                 log.debug("[{}]爬虫启动", crawler.config().getName());
-                crawler.push("https://www.baidu.com");
-                crawler.push("https://www.baidu.com");
-                crawler.push("https://www.baidu.com");
+                crawler.push(
+                        "https://video.twimg.com/ext_tw_video/1295151252536401920/pu/vid/640x352/wpx5Lo0lKRax12hV.mp4?tag=10",
+//                        "https://video.twimg.com/ext_tw_video/1299719026067808257/pu/pl/BAQ392kyqXKXAlqm.m3u8?tag=10",
+//                        "https://www.google.com.hk",
+                        new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080))
+                );
             }
         });
-        ICrawler crawler2 = createCrawler("2号", responseHandler, requester);
+        /*ICrawler crawler2 = createCrawler("2号", responseHandler, requester);
         crawler2.startup().whenCompleteAsync((crawler, throwable) -> {
             if (throwable != null) {
                 log.error("爬虫启动失败", throwable.getCause());
@@ -58,7 +67,7 @@ public class RegressionTesting {
             } catch (Exception e) {
 
             }
-        }).start();
+        }).start();*/
     }
 
     private static ICrawler createCrawler(String name, IResponseHandler responseHandler, CombineRequester requester) {
@@ -71,7 +80,7 @@ public class RegressionTesting {
         )
                 .wrapBy(new FakeCrawler())
                 .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler());
+                .wrapBy(new RateLimitCrawler(5, 5 * 60000, 0.7f));
         return crawler;
     }
 
