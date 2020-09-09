@@ -9,7 +9,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import top.codings.websiphon.light.bean.M3u8;
 import top.codings.websiphon.light.crawler.ICrawler;
-import top.codings.websiphon.light.error.StopHandlErrorException;
 import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.anno.Shared;
@@ -22,8 +21,6 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Shared
@@ -146,7 +143,6 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         // 根据分片数量创建对应的内容槽
         stack.segments = new byte[extInfs.size()][];
         LongAdder adder = new LongAdder();
-        Lock lock = new ReentrantLock();
         List<Map<String, Object>> waits = new LinkedList<>();
         for (int i = 0; i < extInfs.size(); i++) {
             ExtInf extInf = extInfs.get(i);
@@ -158,7 +154,6 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
                 waits.add(Map.of(
                         "url", s,
                         "count", extInfs.size(),
-                        "lock", lock,
                         "index", finalI,
                         "adder", adder
                 ));
@@ -195,46 +190,44 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         if (adder.sum() != count) {
             return null;
         }
-        Lock lock = (Lock) stack.params.get("lock");
-        if (!lock.tryLock()) {
+        if (!stack.finish.compareAndSet(false, true)) {
             return null;
         }
-        try {
-            if (stack.finish.get()) {
-                return null;
-            }
-            stack.finish.set(true);
-            byte[] content = new byte[0];
-            for (byte[] segment : stack.segments) {
-                byte[] bytes = new byte[content.length + segment.length];
-                System.arraycopy(content, 0, bytes, 0, content.length);
-                System.arraycopy(segment, 0, bytes, content.length, segment.length);
-                content = bytes;
-            }
-            if (localStorage) {
-                File file = Path.of(basePath, UUID.randomUUID().toString().replace("-", "") + ".mp4").toFile();
-                if (!file.getParentFile().exists()) {
-                    file.getParentFile().mkdirs();
-                }
-                FileUtils.writeByteArrayToFile(file, content);
-                return null;
-            }
-            request.setUserData(stack.userData);
-            return M3u8.builder()
-                    .content(content)
-                    .build();
-        } finally {
-            lock.unlock();
+        byte[] content = new byte[0];
+        for (byte[] segment : stack.segments) {
+            byte[] bytes = new byte[content.length + segment.length];
+            System.arraycopy(content, 0, bytes, 0, content.length);
+            System.arraycopy(segment, 0, bytes, content.length, segment.length);
+            content = bytes;
         }
+        if (localStorage) {
+            File file = Path.of(basePath, UUID.randomUUID().toString().replace("-", "") + ".mp4").toFile();
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
+            FileUtils.writeByteArrayToFile(file, content);
+            return null;
+        }
+        request.setUserData(stack.userData);
+        return M3u8.builder()
+                .content(content)
+                .build();
     }
 
     private UserDataStack copyUserDataStack(UserDataStack stack, Map<String, Object> som) {
-        UserDataStack copy = new UserDataStack();
+        UserDataStack copy;
+        try {
+            copy = stackClass.getConstructor().newInstance();
+        } catch (Exception e) {
+            log.error("拷贝m3u8内部数据失败");
+            copy = new UserDataStack();
+        }
         copy.userData = stack.userData;
         copy.stage = stack.stage;
         copy.segments = stack.segments;
         copy.queue = stack.queue;
         copy.params = som;
+        copy.copy(stack);
         return copy;
     }
 
@@ -323,8 +316,8 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         private Map<String, Object> params;
         private AtomicBoolean finish = new AtomicBoolean(false);
 
-        protected boolean isFinish() {
-            return finish.get();
+        protected void copy(UserDataStack old) {
+
         }
     }
 }
