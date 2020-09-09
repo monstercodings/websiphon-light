@@ -117,7 +117,9 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                             if (!httpResponse.decoderResult().isSuccess()) {
                                                 request.requestResult.setSucceed(false);
                                                 request.requestResult.setThrowable(new RuntimeException("响应解析失败"));
-                                                responseHandler.handle(request);
+                                                if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
+                                                    responseHandler.handle(request);
+                                                }
                                                 return;
                                             }
                                             int code = httpResponse.status().code();
@@ -150,9 +152,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> implements As
                                                 mimeType = "text/html";
                                             }
                                             if ((mimeType.contains("text") || mimeType.contains("json")) && charset == null) {
-                                                channelHandlerContext.close();
                                                 request.requestResult.setResponseType(IRequest.ResponseType.NO_CHARSET);
-                                                responseHandler.handle(request);
+                                                if (getStrategy() == IRequester.NetworkErrorStrategy.RESPONSE) {
+                                                    responseHandler.handle(request);
+                                                }
                                                 return;
                                             }
                                             if (mimeType.contains("text")) {
