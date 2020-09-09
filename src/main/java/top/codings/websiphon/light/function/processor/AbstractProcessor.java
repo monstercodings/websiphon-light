@@ -92,17 +92,21 @@ public abstract class AbstractProcessor<T> implements IProcessor, ComponentInitA
         return false;
     }
 
-    protected void whenError(Throwable throwable, IRequest request, ICrawler crawler) throws StopHandlErrorException {
+    protected void whenError(Throwable throwable, IRequest request, ICrawler crawler) throws Exception {
 
     }
 
     @Override
-    public final void doOnError(Throwable throwable, IRequest request, ICrawler crawler) throws StopHandlErrorException {
+    public final void doOnError(Throwable throwable, IRequest request, ICrawler crawler) throws Exception {
         for (AbstractProcessor p = root; p != null; p = p.next) {
             if (p.isMatchHandleError(request, throwable)) {
                 p.whenError(throwable, request, crawler);
             }
         }
+    }
+
+    protected void stopHandleError() throws StopHandlErrorException {
+        throw new StopHandlErrorException();
     }
 
     protected abstract Object process0(T data, IRequest request, ICrawler crawler) throws Exception;

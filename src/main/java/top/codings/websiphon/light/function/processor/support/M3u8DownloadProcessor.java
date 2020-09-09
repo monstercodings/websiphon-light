@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import top.codings.websiphon.light.bean.M3u8;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.error.StopHandlErrorException;
 import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.anno.Shared;
@@ -112,7 +113,7 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
     }
 
     @Override
-    protected void whenError(Throwable throwable, IRequest request, ICrawler crawler) {
+    protected void whenError(Throwable throwable, IRequest request, ICrawler crawler) throws Exception {
         request.setUserData(((UserDataStack) request.getUserData()).userData);
     }
 
