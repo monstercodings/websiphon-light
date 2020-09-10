@@ -49,7 +49,7 @@ public class RegistryCrawler extends CombineCrawler implements RegistrableCrawle
         CompletableFuture cf = new CompletableFuture();
         cf.completeAsync(() -> null);
         if (null != registry) {
-            cf = registry.shutdown(true);
+            cf = registry.shutdown();
         }
         return CompletableFuture.allOf(cf, super.shutdown()).thenApplyAsync(o -> this.wrapper());
     }

@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture;
 public interface IRegistry {
     CompletableFuture<IRegistry> startup();
 
-    CompletableFuture<IRegistry> shutdown(boolean force);
+    CompletableFuture<IRegistry> shutdown();
 
     void setConfig(CrawlerConfig crawlerConfig, RegistryConfig registryConfig);
 
