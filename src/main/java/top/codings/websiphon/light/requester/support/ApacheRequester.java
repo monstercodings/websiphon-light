@@ -32,6 +32,7 @@ import org.apache.http.util.CharsetUtils;
 import org.apache.http.util.EntityUtils;
 import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.anno.Shared;
@@ -137,17 +138,17 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
     public CompletableFuture<ApacheRequest> execute(ApacheRequest request) {
         HttpUriRequest httpRequest = request.getHttpRequest();
         HttpClientContext context = HttpClientContext.create();
-//        context.setAttribute("webRequest", request);
         RequestConfig.Builder builder = RequestConfig
                 .copy(requestConfig)
                 .setSocketTimeout(config.getConnectTimeoutMillis())
                 .setConnectTimeout(config.getConnectTimeoutMillis())
                 .setConnectionRequestTimeout(config.getIdleTimeMillis());
-        // TODO 此处支持代理
-        /*WebProxy proxy = httpRequest.getProxy();
-        if (proxy != null && proxy != WebProxy.NO_PROXY) {
-            builder.setProxy(new HttpHost(proxy.getProxyIp(), proxy.getProxyPort()));
-        }*/
+        // 此处支持代理
+        Proxy proxy = request.getProxy();
+        if (proxy != null && proxy != Proxy.NO_PROXY) {
+            InetSocketAddress address = (InetSocketAddress) proxy.address();
+            builder.setProxy(new HttpHost(address.getHostString(), address.getPort()));
+        }
         CompletableFuture<ApacheRequest> completableFuture = new CompletableFuture();
         context.setRequestConfig(builder.build());
         client.execute(httpRequest, context, new CustomFutureCallback(request, completableFuture));
@@ -193,7 +194,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                 request.setRequestResult(new IRequest.RequestResult());
                 if (request.getStatus() == IRequest.Status.TIMEOUT) {
                     request.requestResult.setSucceed(false);
-                    request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
+                    request.requestResult.setThrowable(new FrameworkException("该任务请求已超时，取消业务处理"));
                     return;
                 }
                 request.setStatus(IRequest.Status.RESPONSE);
@@ -278,75 +279,6 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                     HttpClientUtils.closeQuietly(result);
                 }
             });
-
-            /*request.setStatus(IRequest.Status.RESPONSE);
-            IRequest.RequestResult requestResult = new IRequest.RequestResult();
-            request.setRequestResult(requestResult);
-            try {
-//                WebDownloadEvent event = new WebDownloadEvent(ContentType.getOrDefault(result.getEntity()), result.getEntity().getContentLength());
-                byte[] body = EntityUtils.toByteArray(result.getEntity());
-                final Header ceheader = result.getEntity().getContentEncoding();
-                if (ceheader != null) {
-                    final HeaderElement[] codecs = ceheader.getElements();
-                    for (final HeaderElement codec : codecs) {
-                        final String codecname = codec.getName().toLowerCase(Locale.ROOT);
-                        final InputStreamFactory decoderFactory = decoderRegistry.lookup(codecname);
-                        if (decoderFactory != null) {
-                            try (InputStream is = decoderFactory.create(new ByteArrayInputStream(body))) {
-                                body = IOUtils.toByteArray(is);
-                            }
-                        }
-                    }
-                }
-                request.setHttpResponse(result);
-                requestResult.setSucceed(true);
-                String mimeType = "text/html";
-                Charset charset = null;
-                Header ct = result.getFirstHeader("content-type");
-                String contentType;
-                if (ct != null) {
-                    contentType = ct.getValue();
-                    Matcher matcher = pattern.matcher(contentType);
-                    if (matcher.find()) {
-                        mimeType = matcher.group(1);
-                        if (StringUtils.isBlank(mimeType)) {
-                            mimeType = "text/html";
-                        }
-                        String charsetStr = matcher.group(3);
-                        if (StringUtils.isNotBlank(charsetStr)) {
-                            if (charsetStr.contains(",")) {
-                                charsetStr = charsetStr.split(",")[0];
-                            }
-                            charset = CharsetUtils.lookup(charsetStr);
-                        }
-                    } else {
-                        log.trace("无字符编码类型[{}] -> {}", contentType, request.getHttpRequest().getURI().toString());
-                        mimeType = "text/html";
-                    }
-                }
-                if (null == charset) {
-                    charset = HttpCharsetUtil.findCharset(body);
-                }
-                if (mimeType.contains("text")) {
-                    // 文本解析
-                    request.requestResult.setResponseType(IRequest.ResponseType.TEXT);
-                    request.requestResult.setData(Optional.ofNullable(new String(body, charset)).orElse("<html>该网页无内容</html>"));
-                } else if (mimeType.contains("json")) {
-                    // JSON解析
-                    request.requestResult.setResponseType(IRequest.ResponseType.JSON);
-                    request.requestResult.setData(JSON.parse(Optional.ofNullable(new String(body, charset)).orElse("{}")));
-                } else {
-                    // 字节解析
-                    request.requestResult.setResponseType(IRequest.ResponseType.UNKNOW);
-                    request.requestResult.setData(body);
-                }
-                responseHandler.push(request);
-                completableFuture.completeAsync(() -> request);
-            } catch (Exception e) {
-                failed(e);
-            } finally {
-//                HttpClientUtils.closeQuietly(result);
-            }*/
         }
 
         @Override
@@ -367,7 +299,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
         public void cancelled() {
             verifyStatus(o -> {
                 request.requestResult.setSucceed(false);
-                request.requestResult.setThrowable(new RuntimeException("请求被取消"));
+                request.requestResult.setThrowable(new FrameworkException("请求被取消"));
                 if (getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
                     return;
                 }

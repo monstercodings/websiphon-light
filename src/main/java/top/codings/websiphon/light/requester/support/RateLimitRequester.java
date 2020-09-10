@@ -17,7 +17,7 @@ import static top.codings.websiphon.light.requester.IRequest.Status.*;
 
 @Slf4j
 public class RateLimitRequester extends CombineRequester<IRequest> {
-    private final static String NAME = "ratelimit";
+    private static final String NAME = "ratelimit";
     /**
      * 限制内存占用的阈值
      * 设置<=0的话则不做限制
@@ -98,6 +98,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                             })
                     ;
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
                     if (null != token) {
@@ -117,12 +118,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                     if (inner == null) {
                         continue;
                     }
-                    /*String url = "";
-                    if (inner.request instanceof BuiltinRequest) {
-                        url = ((HttpRequest) inner.request.getHttpRequest()).uri().toString();
-                    } else if (inner.request instanceof ApacheRequest) {
-                        url = ((ApacheRequest) inner.request).getHttpRequest().getURI().toString();
-                    }*/
                     if (null != token) {
                         // 先进行令牌的释放，帮助后续网络请求能更快的发送
                         token.release();
@@ -138,15 +133,14 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                                     log.error("请求对象超时处理失败", e);
                                 }
                             }
-//                                log.warn("请求对象超时 -> {}", inner.request.getStatus().text);
                             inner.request.setStatus(IRequest.Status.TIMEOUT);
-//                                inner.request.release();
                         }
                     } finally {
                         inner.request.unlock();
                     }
                     verifyBusy();
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
                     log.error("请求对象超时检查失败", e);
@@ -160,7 +154,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
 
     private void verifyBusy() {
         if (queue.isEmpty() && timeoutQueue.isEmpty() && !crawler.wrapper().isBusy()) {
-//            log.warn("请求器执行结束任务操作");
             IResponseHandler responseHandler = getResponseHandler();
             if (responseHandler instanceof QueueResponseHandler) {
                 ((QueueResponseHandler) responseHandler).whenFinish(crawler.wrapper());
@@ -189,6 +182,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
             try {
                 exe.awaitTermination(1, TimeUnit.MINUTES);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
         if (null != queue) {
@@ -214,7 +208,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
         boolean first = true;
         float usePercent;
         long startTime = 0;
-        while ((usePercent = _checkMemory()) > limitMemory) {
+        while ((usePercent = checkMemory0()) > limitMemory) {
             if (first) {
                 first = false;
                 startTime = System.currentTimeMillis();
@@ -232,7 +226,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
         }
     }
 
-    private float _checkMemory() throws InterruptedException {
+    private float checkMemory0() throws InterruptedException {
         Runtime runtime = Runtime.getRuntime();
         //jvm总内存
         long jvmTotalMemoryByte = runtime.totalMemory();

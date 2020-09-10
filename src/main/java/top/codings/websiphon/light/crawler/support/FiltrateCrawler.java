@@ -2,6 +2,7 @@ package top.codings.websiphon.light.crawler.support;
 
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.FilterableCrawler;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.filter.ArticleFilter;
 import top.codings.websiphon.light.function.filter.CleanableFilter;
 import top.codings.websiphon.light.function.filter.TwoCombineFilter;
@@ -9,7 +10,6 @@ import top.codings.websiphon.light.function.filter.IFilter;
 import top.codings.websiphon.light.requester.support.DistinctRequester;
 
 public class FiltrateCrawler extends CombineCrawler implements FilterableCrawler {
-    //    private IFilter<String, Boolean> iFilter;
     private CleanableFilter cleanableFilter;
 
     public FiltrateCrawler() {
@@ -23,7 +23,7 @@ public class FiltrateCrawler extends CombineCrawler implements FilterableCrawler
             // 使用组合过滤器
             cleanableFilter = new TwoCombineFilter(new ArticleFilter());
         } else {
-            throw new RuntimeException("去重功能爬虫暂不支持除基础和可清除之外的过滤器");
+            throw new FrameworkException("去重功能爬虫暂不支持除基础和可清除之外的过滤器");
         }
     }
 

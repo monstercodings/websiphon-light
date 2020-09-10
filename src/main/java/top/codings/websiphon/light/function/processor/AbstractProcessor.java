@@ -14,8 +14,8 @@ import top.codings.websiphon.light.requester.IRequest;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
-public abstract class AbstractProcessor<T> implements IProcessor, ComponentInitAware<ICrawler>, ComponentCloseAware, ComponentErrorAware {
-    private transient AtomicInteger initIndex = new AtomicInteger(0);
+public abstract class AbstractProcessor<T> implements IProcessor<IRequest>, ComponentInitAware<ICrawler>, ComponentCloseAware, ComponentErrorAware {
+    private AtomicInteger initIndex = new AtomicInteger(0);
     private TypeParameterMatcher matcher;
     private AbstractProcessor root;
     private AbstractProcessor prev;

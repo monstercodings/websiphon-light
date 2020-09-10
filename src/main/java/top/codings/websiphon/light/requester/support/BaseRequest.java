@@ -44,16 +44,6 @@ public abstract class BaseRequest<T> implements IRequest<T> {
 
     @Override
     public boolean setStatus(Status status) {
-        /*if (tryLock()) {
-            try {
-                this.status = status;
-                return true;
-            } finally {
-                unlock();
-            }
-        } else {
-            return false;
-        }*/
         this.status = status;
         return true;
     }

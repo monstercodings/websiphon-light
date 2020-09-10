@@ -2,7 +2,6 @@ package top.codings.websiphon.light.requester.support;
 
 import com.alibaba.fastjson.JSON;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
@@ -19,7 +18,6 @@ import io.netty.util.AttributeKey;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -35,7 +33,6 @@ import top.codings.websiphon.light.utils.HttpCharsetUtil;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
-import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URI;
@@ -359,12 +356,6 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                             request.unlock();
                             ctx.close();
                         }
-                                    /*if (cause instanceof TooLongFrameException) {
-                                        System.err.println("内容太长无法请求成功");
-                                        ctx.close();
-                                        return;
-                                    }
-                                    super.exceptionCaught(ctx, cause);*/
                     }
                 })
         ;
@@ -448,6 +439,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
             try {
                 executor.awaitTermination(15, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
             executor = null;
             trafficHandler = null;

@@ -14,13 +14,12 @@ import java.util.concurrent.locks.ReentrantLock;
  * 具备异步处理能力的响应管理器
  */
 @Slf4j
-public abstract class AsyncResponseHandler extends AbstractResponseHandler implements QueueResponseHandler {
-    private final static String NAME = "processors";
+public abstract class AsyncResponseHandler<T extends IRequest> extends AbstractResponseHandler<T> implements QueueResponseHandler<T> {
+    private static final String NAME = "processors";
     private ExecutorService exe;
-    private LinkedTransferQueue<IRequest> queue;
+    private LinkedTransferQueue<T> queue;
     private Semaphore token;
     private Lock lock = new ReentrantLock();
-//    private ICrawler crawler;
     /**
      * 用于防止非原子操作造成的任务完成情况误判
      */
@@ -38,7 +37,7 @@ public abstract class AsyncResponseHandler extends AbstractResponseHandler imple
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     // 先阻塞获取任务
-                    IRequest request = queue.poll(30, TimeUnit.SECONDS);
+                    T request = queue.poll(30, TimeUnit.SECONDS);
                     if (null == request) {
                         if (log.isDebugEnabled()) {
                             log.debug("当前剩余响应 -> {}", queue.size());
@@ -86,6 +85,7 @@ public abstract class AsyncResponseHandler extends AbstractResponseHandler imple
                         }
                     });
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
                     token.release();
@@ -108,13 +108,14 @@ public abstract class AsyncResponseHandler extends AbstractResponseHandler imple
             try {
                 exe.awaitTermination(1, TimeUnit.MINUTES);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
         if (null != queue) queue.clear();
     }
 
     @Override
-    public void handle(IRequest request) {
+    public void handle(T request) {
         normal = false;
         queue.offer(request);
     }
@@ -127,18 +128,13 @@ public abstract class AsyncResponseHandler extends AbstractResponseHandler imple
         );
     }
 
-    /*@Override
-    public void setCrawler(ICrawler crawler) {
-        this.crawler = crawler;
-    }*/
-
-    protected void beforeHandle(IRequest request, ICrawler crawler) throws Exception {
+    protected void beforeHandle(T request, ICrawler crawler) throws Exception {
 
     }
 
-    protected void afterHandle(IRequest request, ICrawler crawler) throws Exception {
+    protected void afterHandle(T request, ICrawler crawler) throws Exception {
 
     }
 
-    protected abstract void handle(IRequest request, ICrawler crawler) throws Exception;
+    protected abstract void handle(T request, ICrawler crawler) throws Exception;
 }

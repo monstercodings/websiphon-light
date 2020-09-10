@@ -10,33 +10,9 @@ import top.codings.websiphon.light.requester.IRequest;
  * 需要配合具备统计功能的爬虫和请求器来使用
  * 否则单独使用不生效
  */
-public abstract class StatResponseHandler extends ChainResponseHandler {
-
-    /*@Override
-    protected AbstractProcessor processorChain() {
-        return new AbstractProcessor<>() {
-            @Override
-            protected Object process0(Object data, BuiltinRequest request, ICrawler crawler) throws Exception {
-                if (crawler instanceof CombineCrawler) {
-                    CombineCrawler combineCrawler = (CombineCrawler) crawler;
-                    combineCrawler.find(StatisticalCrawler.class).ifPresent(statisticalCrawler -> {
-                        DataStat dataStat = statisticalCrawler.stat();
-                        dataStat.getResponseCountTotal().increment();
-                    });
-
-                }
-                return data;
-            }
-        };
-    }*/
-
+public abstract class StatResponseHandler<T extends IRequest> extends ChainResponseHandler<T> {
     @Override
-    protected void beforeHandle(IRequest request, ICrawler crawler) throws Exception {
-        super.beforeHandle(request, crawler);
-    }
-
-    @Override
-    protected void afterHandle(IRequest request, ICrawler crawler) throws Exception {
+    protected void afterHandle(T request, ICrawler crawler) throws Exception {
         if (crawler instanceof CombineCrawler) {
             CombineCrawler combineCrawler = (CombineCrawler) crawler;
             combineCrawler.find(StatisticalCrawler.class).ifPresent(statisticalCrawler -> statisticalCrawler.stat().getResponseCountTotal().increment());

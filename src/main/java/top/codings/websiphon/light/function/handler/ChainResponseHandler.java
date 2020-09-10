@@ -12,15 +12,15 @@ import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * 具备链式调用能力的分化处理响应管理器
  */
 @Slf4j
-public abstract class ChainResponseHandler extends AsyncResponseHandler {
-    protected List<Function<IRequest, IRequest>> successes = new CopyOnWriteArrayList<>();
-    protected List<Function<IRequest, IRequest>> errors = new CopyOnWriteArrayList<>();
+public abstract class ChainResponseHandler<T extends IRequest> extends AsyncResponseHandler<T> {
+    protected List<UnaryOperator<T>> successes = new CopyOnWriteArrayList<>();
+    protected List<UnaryOperator<T>> errors = new CopyOnWriteArrayList<>();
     private IProcessor processor;
 
     @Override
@@ -65,7 +65,7 @@ public abstract class ChainResponseHandler extends AsyncResponseHandler {
     }
 
     @Override
-    protected void handle(IRequest request, ICrawler crawler) throws Exception {
+    protected void handle(T request, ICrawler crawler) throws Exception {
         IRequest.RequestResult result = request.getRequestResult();
         if (result.isSucceed()) {
             handleSucceed(request);
@@ -74,19 +74,19 @@ public abstract class ChainResponseHandler extends AsyncResponseHandler {
         }
     }
 
-    private void handleSucceed(IRequest request) {
-        IRequest req = request;
-        for (Function<IRequest, IRequest> success : successes) {
+    private void handleSucceed(T request) {
+        T req = request;
+        for (UnaryOperator<T> success : successes) {
             if ((req = success.apply(req)) == null) {
                 break;
             }
         }
     }
 
-    private void handleError(IRequest request) throws Exception {
+    private void handleError(T request) throws Exception {
         try {
-            IRequest req = request;
-            for (Function<IRequest, IRequest> error : errors) {
+            T req = request;
+            for (UnaryOperator<T> error : errors) {
                 if ((req = error.apply(req)) == null) {
                     break;
                 }
@@ -125,5 +125,5 @@ public abstract class ChainResponseHandler extends AsyncResponseHandler {
      * @param request
      * @param throwable
      */
-    protected abstract void handleError(IRequest request, Throwable throwable, ICrawler crawler);
+    protected abstract void handleError(T request, Throwable throwable, ICrawler crawler);
 }

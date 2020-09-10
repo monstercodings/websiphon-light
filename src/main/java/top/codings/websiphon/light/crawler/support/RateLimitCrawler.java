@@ -4,6 +4,7 @@ import lombok.Setter;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.RateLimitableCrawler;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 import top.codings.websiphon.light.requester.support.RateLimitRequester;
@@ -11,13 +12,13 @@ import top.codings.websiphon.light.requester.support.RateLimitRequester;
 import java.util.function.BiConsumer;
 
 public class RateLimitCrawler extends CombineCrawler implements RateLimitableCrawler {
-    private final static float DEFAULT_LIMIT_MEMORY = 0.7f;
+    private static final float DEFAULT_LIMIT_MEMORY = 0.7f;
     @Setter
     private float limitMemory;
-    private final static int DEFAULT_MAX_NETWORK_CONCURRENCY = 5;
+    private static final int DEFAULT_MAX_NETWORK_CONCURRENCY = 5;
     @Setter
     private int maxNetworkConcurrency;
-    private final static int DEFAULT_TASK_TIMEOUT_MILLIS = 60000;
+    private static final int DEFAULT_TASK_TIMEOUT_MILLIS = 60000;
     @Setter
     private int taskTimeoutMillis;
     @Setter
@@ -46,7 +47,7 @@ public class RateLimitCrawler extends CombineCrawler implements RateLimitableCra
     public RateLimitCrawler(int maxNetworkConcurrency, int taskTimeoutMillis, float limitMemory, BiConsumer<IRequest, ICrawler> timeoutHandler) {
         this.maxNetworkConcurrency = maxNetworkConcurrency;
         if (limitMemory > 1f) {
-            throw new RuntimeException("内存限制阈值只能为[0,1]");
+            throw new FrameworkException("内存限制阈值只能为[0,1]");
         }
         this.taskTimeoutMillis = taskTimeoutMillis;
         this.limitMemory = limitMemory;

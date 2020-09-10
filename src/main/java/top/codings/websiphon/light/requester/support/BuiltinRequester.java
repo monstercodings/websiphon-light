@@ -9,6 +9,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.CharsetUtils;
 import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.loader.anno.PluginDefinition;
 import top.codings.websiphon.light.loader.anno.Shared;
@@ -88,8 +89,6 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
             builder.sslContext(sslContext)
                     .sslParameters(new SSLParameters());
         }
-        //                .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", 1080)))
-//                                    .authenticator(Authenticator.getDefault());
         client = builder.build();
     }
 
@@ -107,7 +106,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
                             request.requestResult = new IRequest.RequestResult();
                             if (request.getStatus() == IRequest.Status.TIMEOUT) {
                                 request.requestResult.setSucceed(false);
-                                request.requestResult.setThrowable(new RuntimeException("该任务请求已超时，取消业务处理"));
+                                request.requestResult.setThrowable(new FrameworkException("该任务请求已超时，取消业务处理"));
                                 return;
                             }
                             if (httpResponse != null) {
@@ -120,7 +119,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
                                 log.error("出现了两参数均为空的异常现象!");
                                 request.setStatus(IRequest.Status.ERROR);
                                 request.requestResult.setSucceed(false);
-                                request.requestResult.setThrowable(new RuntimeException("出现了两参数均为空的异常现象"));
+                                request.requestResult.setThrowable(new FrameworkException("出现了两参数均为空的异常现象"));
                             }
                             if (throwable != null && getStrategy() == IRequester.NetworkErrorStrategy.DROP) {
                                 return;
@@ -223,6 +222,7 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
 
     @Override
     protected void close(int index) {
+        // 默认实现
     }
 
     @Override
@@ -237,32 +237,32 @@ public class BuiltinRequester extends CombineRequester<BuiltinRequest> {
 
         @Override
         public void checkClientTrusted(X509Certificate[] chain, String authType, Socket socket) throws CertificateException {
-
+            // 默认实现
         }
 
         @Override
         public void checkServerTrusted(X509Certificate[] chain, String authType, Socket socket) throws CertificateException {
-
+            // 默认实现
         }
 
         @Override
         public void checkClientTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
-
+            // 默认实现
         }
 
         @Override
         public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine engine) throws CertificateException {
-
+            // 默认实现
         }
 
         @Override
         public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-
+            // 默认实现
         }
 
         @Override
         public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-
+            // 默认实现
         }
 
         @Override

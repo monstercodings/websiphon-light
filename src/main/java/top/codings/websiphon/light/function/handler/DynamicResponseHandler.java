@@ -4,9 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.processor.AbstractProcessor;
 import top.codings.websiphon.light.function.processor.IProcessor;
+import top.codings.websiphon.light.requester.IRequest;
 
 @Slf4j
-public abstract class DynamicResponseHandler extends StatResponseHandler {
+public abstract class DynamicResponseHandler<T extends IRequest> extends StatResponseHandler<T> {
     private String[] processorClassNames;
     private ClassLoader classLoader;
 

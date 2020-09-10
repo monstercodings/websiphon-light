@@ -6,12 +6,13 @@ import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.ComponentCloseAware;
 import top.codings.websiphon.light.function.ComponentInitAware;
 import top.codings.websiphon.light.loader.anno.Shared;
+import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class AbstractResponseHandler implements
-        IResponseHandler, ComponentInitAware<ICrawler>, ComponentCloseAware {
-    private transient AtomicInteger initIndex = new AtomicInteger(0);
+public abstract class AbstractResponseHandler<T extends IRequest> implements
+        IResponseHandler<T>, ComponentInitAware<ICrawler>, ComponentCloseAware {
+    private AtomicInteger initIndex = new AtomicInteger(0);
     protected CrawlerConfig config;
 
     @Override

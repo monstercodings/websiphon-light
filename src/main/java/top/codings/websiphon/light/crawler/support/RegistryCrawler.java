@@ -4,6 +4,7 @@ import top.codings.websiphon.light.config.RegistryConfig;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.RegistrableCrawler;
+import top.codings.websiphon.light.error.FrameworkException;
 import top.codings.websiphon.light.function.registry.IRegistry;
 
 import java.util.Optional;
@@ -28,7 +29,7 @@ public class RegistryCrawler extends CombineCrawler implements RegistrableCrawle
                         .getConstructor()
                         .newInstance();
             } catch (Exception e) {
-                throw new RuntimeException("初始化注册器失败", e);
+                throw new FrameworkException("初始化注册器失败", e);
             }
         }
     }

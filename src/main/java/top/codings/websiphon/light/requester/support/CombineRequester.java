@@ -13,7 +13,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class CombineRequester<T extends IRequest> implements IRequester<T>, ComponentInitAware<ICrawler>, ComponentCloseAware {
-    private transient AtomicInteger initIndex = new AtomicInteger(0);
+    private static final FrameworkException NONE_IMPLEMENT=new FrameworkException("非代理请求器必须实现自身执行逻辑");
+    private AtomicInteger initIndex = new AtomicInteger(0);
     protected volatile boolean shutdown;
     protected CombineRequester<T> requester;
     private Class<T> requestClass;
@@ -75,7 +76,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
 
     protected void init(ICrawler crawler, int index) throws Exception {
         if (null == requester) {
-            throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+            throw NONE_IMPLEMENT;
         }
     }
 
@@ -84,7 +85,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.execute(request);
         }
-        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+        throw NONE_IMPLEMENT;
     }
 
     @Override
@@ -92,7 +93,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.create(url);
         }
-        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+        throw NONE_IMPLEMENT;
     }
 
     @Override
@@ -100,7 +101,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.create(url, userData);
         }
-        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+        throw NONE_IMPLEMENT;
     }
 
     @Override
@@ -118,7 +119,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
 
     protected void close(int index) throws Exception {
         if (null == requester) {
-            throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+            throw NONE_IMPLEMENT;
         }
     }
 
@@ -136,7 +137,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
             requester.setResponseHandler(responseHandler);
             return;
         }
-        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+        throw NONE_IMPLEMENT;
     }
 
     @Override
@@ -144,7 +145,7 @@ public abstract class CombineRequester<T extends IRequest> implements IRequester
         if (null != requester) {
             return requester.getResponseHandler();
         }
-        throw new FrameworkException("非代理请求器必须实现自身执行逻辑");
+        throw NONE_IMPLEMENT;
     }
 
     public final NetworkErrorStrategy getStrategy() {

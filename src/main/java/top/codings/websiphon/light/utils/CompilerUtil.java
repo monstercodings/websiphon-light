@@ -15,16 +15,15 @@ import java.net.URL;
 import java.util.Arrays;
 
 @Slf4j
-public class CompilerUtil {
+public abstract class CompilerUtil {
+    private CompilerUtil(){}
+
     private static final String COMPILER_PATH = "config/compiler/";
-    private final static String BASE_PATH = new File("").getAbsolutePath()
+    private static final String BASE_PATH = new File("").getAbsolutePath()
             .concat("/").concat(COMPILER_PATH);
     private static final JavaCompiler JAVA_COMPILER = ToolProvider.getSystemJavaCompiler();
     private static final StandardJavaFileManager STANDARD_JAVA_FILE_MANAGER = JAVA_COMPILER.getStandardFileManager(null, null, null);
     private static URL[] urls;
-//    @Getter
-//    private volatile static WebsiphonClassLoaderOld classLoader;
-
 
     static {
         try {
@@ -32,30 +31,16 @@ public class CompilerUtil {
             FileUtils.forceMkdirParent(file);
             urls = new URL[]{
                     new URL("file://".concat(BASE_PATH))};
-//            classLoader = new WebsiphonClassLoaderOld(urls);
         } catch (Exception e) {
             log.error("初始化本地Class的URL失败", e);
         }
     }
 
-    /*public final static Class loadClass(String className) throws FrameworkException {
-        try {
-            return classLoader.loadClass(className);
-        } catch (ClassNotFoundException e) {
-            TaskResult<Class> result = compiler(className);
-            if (!result.isSucceed()) {
-                throw new FrameworkException(String.format("没有找到该类 -> %s", className));
-            }
-            return result.getData();
-        }
-    }*/
-
-    public final static TaskResult compiler(String className) {
+    public static final TaskResult compiler(String className) {
         if (StringUtils.isBlank(className)) {
-            TaskResult<Class> result = new TaskResult<>(false,
+            return new TaskResult<>(false,
                     new IllegalArgumentException("全限定类名不能为空"),
                     null);
-            return result;
         }
         String path = className.replace(".", "/") + ".java";
         return compiler(new File(COMPILER_PATH + path), className);
@@ -70,20 +55,11 @@ public class CompilerUtil {
                 ), null, javaFileObjects);
         boolean compileFlag = task.call();
         if (!compileFlag) {
-            TaskResult<Class> result = new TaskResult<>(false,
+            return new TaskResult<>(false,
                     new FrameworkException(String.format("编译[%s]失败", file.getName())),
                     null
             );
-            return result;
         }
         return new TaskResult<>(true, null, null);
-        /*try {
-            Class clazz = classLoader.loadClass(className);
-            TaskResult<Class> result = new TaskResult<>(true, null, clazz);
-            return result;
-        } catch (Exception e) {
-            TaskResult<Class> result = new TaskResult<>(false, e, null);
-            return result;
-        }*/
     }
 }

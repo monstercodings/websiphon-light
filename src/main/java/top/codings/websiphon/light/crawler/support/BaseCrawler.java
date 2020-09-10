@@ -71,7 +71,7 @@ public class BaseCrawler extends CombineCrawler {
                         config.getClassLoader() == null ? ClassLoader.getSystemClassLoader() : config.getClassLoader()
                 ).getConstructor().newInstance();
             } catch (Exception e) {
-                throw new RuntimeException("初始化响应处理器失败", e);
+                throw new FrameworkException("初始化响应处理器失败", e);
             }
         }
         if (null != responseHandler) {
@@ -112,7 +112,8 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public boolean isBusy() {
-        boolean isBusy = (responseHandler instanceof QueueResponseHandler) ? ((QueueResponseHandler) responseHandler).isBusy() : false;
+        boolean isBusy = (responseHandler instanceof QueueResponseHandler) ?
+                ((QueueResponseHandler) responseHandler).isBusy() : false;
         return getRequester().isBusy() | isBusy;
     }
 
@@ -167,6 +168,7 @@ public class BaseCrawler extends CombineCrawler {
                 try {
                     shutdown().get();
                 } catch (Exception e) {
+                    // 忽略异常
                 }
             }
         });

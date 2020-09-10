@@ -7,7 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import top.codings.websiphon.light.function.filter.IFilter;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 
 public class DistinctRequester extends CombineRequester<IRequest> {
@@ -30,7 +30,7 @@ public class DistinctRequester extends CombineRequester<IRequest> {
         super(requester);
         if (null == filter) {
             this.filter = new IFilter<>() {
-                BloomFilter<String> bloomFilter = BloomFilter.create(Funnels.stringFunnel(Charset.forName("utf-8")), maxCount, fpp);
+                BloomFilter<String> bloomFilter = BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), maxCount, fpp);
 
                 @Override
                 public Boolean put(String s) {

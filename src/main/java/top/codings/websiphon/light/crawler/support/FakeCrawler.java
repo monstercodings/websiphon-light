@@ -2,7 +2,6 @@ package top.codings.websiphon.light.crawler.support;
 
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ReplaceableCrawler;
-import top.codings.websiphon.light.requester.IRequester;
 import top.codings.websiphon.light.requester.support.FakeRequester;
 
 import java.util.Map;

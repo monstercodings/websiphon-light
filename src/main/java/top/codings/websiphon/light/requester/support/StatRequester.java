@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class StatRequester extends CombineRequester<IRequest> {
-    private final static String NAME = "统计请求器";
+    private static final String NAME = "统计请求器";
     @Setter
     private boolean debug;
     private DataStat dataStat;
@@ -47,6 +47,7 @@ public class StatRequester extends CombineRequester<IRequest> {
                         }
                         dataStat.refresh();
                     } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         return;
                     } catch (Exception e) {
                         log.error("爬虫统计异常", e);
@@ -66,6 +67,7 @@ public class StatRequester extends CombineRequester<IRequest> {
             try {
                 exe.awaitTermination(15, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
         super.close();

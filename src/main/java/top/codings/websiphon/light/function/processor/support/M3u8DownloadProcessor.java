@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.LongAdder;
         type = PluginType.PROCESSOR
 )
 public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
-    private final static ContentType CONTENT_TYPE = ContentType.parse("application/x-mpegURL");
+    private static final ContentType CONTENT_TYPE = ContentType.parse("application/x-mpegURL");
     private String basePath;
     private boolean localStorage;
     private boolean downloadConcurrency;
@@ -70,10 +70,11 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
     @Override
     protected Object process0(byte[] data, IRequest request, ICrawler crawler) throws Exception {
         Object userData = request.getUserData();
-        if (!CONTENT_TYPE.getMimeType().equals(request.getContentType().getMimeType())) {
-            if (!(userData instanceof UserDataStack)) {
-                return data;
-            }
+        if (
+                !CONTENT_TYPE.getMimeType().equals(request.getContentType().getMimeType()) &&
+                        !(userData instanceof UserDataStack)
+        ) {
+            return data;
         }
         UserDataStack stack;
         if (userData instanceof UserDataStack) {
@@ -157,7 +158,6 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
                         "index", finalI,
                         "adder", adder
                 ));
-//                    crawler.push(s, request.getProxy(), map);
             });
         }
         if (downloadConcurrency) {
@@ -260,6 +260,8 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
                         case "CODECS":
                             extXStreamInf.codecs = ss[1].replace("\"", "");
                             break;
+                        default:
+                            break;
                     }
                 }
                 list.add(extXStreamInf);
@@ -317,7 +319,7 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         private AtomicBoolean finish = new AtomicBoolean(false);
 
         protected void copy(UserDataStack old) {
-
+            // 留给继承该类的子类实现的回调方法
         }
     }
 }
