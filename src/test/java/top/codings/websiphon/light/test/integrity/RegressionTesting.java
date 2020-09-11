@@ -10,8 +10,6 @@ import top.codings.websiphon.light.function.handler.AbstractResponseHandler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.IRequester;
-import top.codings.websiphon.light.requester.support.ApacheRequester;
-import top.codings.websiphon.light.requester.support.BuiltinRequester;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 import top.codings.websiphon.light.requester.support.NettyRequester;
 
@@ -28,7 +26,7 @@ public class RegressionTesting {
                 .ignoreSslError(true)
                 .maxContentLength(Integer.MAX_VALUE)
                 .idleTimeMillis(300000)
-                .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080)))
+//                .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080)))
                 .networkErrorStrategy(IRequester.NetworkErrorStrategy.RESPONSE)
                 .build());
         IResponseHandler responseHandler = new TestResponseHandler();
@@ -39,11 +37,13 @@ public class RegressionTesting {
             } else {
                 log.debug("[{}]爬虫启动", crawler.config().getName());
                 crawler.push(
-                        "https://video.twimg.com/ext_tw_video/1295151252536401920/pu/vid/640x352/wpx5Lo0lKRax12hV.mp4?tag=10",
+                        "https://www.baidu.com/"
+//                        "https://video.twimg.com/ext_tw_video/1295151252536401920/pu/vid/640x352/wpx5Lo0lKRax12hV.mp4?tag=10"
 //                        "https://video.twimg.com/ext_tw_video/1299719026067808257/pu/pl/BAQ392kyqXKXAlqm.m3u8?tag=10",
 //                        "https://www.google.com.hk",
-                        new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080))
+//                        ,new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080))
                 );
+                crawler.push("https://www.baidu.com/?t=1");
             }
         });
         /*ICrawler crawler2 = createCrawler("2号", responseHandler, requester);
@@ -74,13 +74,16 @@ public class RegressionTesting {
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
                         .name(name)
+                        .maxConcurrentProcessing(2)
                         .build(),
                 responseHandler,
                 requester
         )
                 .wrapBy(new FakeCrawler())
                 .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler(5, 5 * 60000, 0.7f));
+                .wrapBy(new RateLimitCrawler(5, 2000, 0.7f, (request, c) -> {
+                    log.debug("请求任务超时 -> {}", request.getUri().toString());
+                }));
         return crawler;
     }
 

@@ -15,7 +15,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Shared
-public class TestResponseHandler extends StatResponseHandler {
+public class TestResponseHandler extends StatResponseHandler<IRequest> {
     private static ContentPrintProcessor contentPrintProcessor = new ContentPrintProcessor();
     private static Text2DocProcessor text2DocProcessor = new Text2DocProcessor();
     private static M3u8DownloadProcessor m3u8DownloadProcessor = new M3u8DownloadProcessor(true);
@@ -37,21 +37,19 @@ public class TestResponseHandler extends StatResponseHandler {
         log.error("发生异常", throwable);
     }
 
-    ReentrantLock lock = new ReentrantLock();
-
     @Override
-    public void whenFinish(ICrawler crawler) {
-        if (!lock.tryLock()) {
+    public void finish(ICrawler crawler) {
+        /*if (!lock.tryLock()) {
             return;
-        }
+        }*/
         try {
             ((CombineCrawler) crawler).find(FilterableCrawler.class).ifPresent(FilterableCrawler::clear);
             log.debug("任务已全部完成");
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
+        }/* finally {
             lock.unlock();
-        }
-//        crawler.shutdown();
+        }*/
+        crawler.shutdown();
     }
 }

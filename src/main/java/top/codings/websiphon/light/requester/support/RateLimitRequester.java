@@ -6,8 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.function.ComponentFinishAware;
+import top.codings.websiphon.light.function.handler.AsyncResponseHandler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
-import top.codings.websiphon.light.function.handler.QueueResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.*;
@@ -32,6 +33,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
     private ExecutorService exe;
     private BiConsumer<IRequest, ICrawler> timeoutHandler;
     private CombineCrawler crawler;
+    private volatile int verison;
     /**
      * 用于防止非原子操作造成的任务完成情况误判
      */
@@ -88,13 +90,14 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                     timeoutQueue.offer(inner);
                     requester.execute(request)
                             .whenCompleteAsync((aVoid, throwable) -> {
+                                // 移除成功说明尚未超时，需要检查任务是否完成
                                 if (timeoutQueue.remove(inner)) {
                                     if (null != token) {
                                         token.release();
                                     }
                                     inner.release();
+                                    verifyBusy(verison);
                                 }
-                                verifyBusy();
                             })
                     ;
                 } catch (InterruptedException e) {
@@ -138,7 +141,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                     } finally {
                         inner.request.unlock();
                     }
-                    verifyBusy();
+                    verifyBusy(verison);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -152,11 +155,34 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
         });
     }
 
-    private void verifyBusy() {
+    private void verifyBusy(final int rawVersion) {
         if (queue.isEmpty() && timeoutQueue.isEmpty() && !crawler.wrapper().isBusy()) {
             IResponseHandler responseHandler = getResponseHandler();
-            if (responseHandler instanceof QueueResponseHandler) {
-                ((QueueResponseHandler) responseHandler).whenFinish(crawler.wrapper());
+            if (responseHandler instanceof AsyncResponseHandler) {
+                synchronized (this) {
+                    // 检查对象内并发的版本号是否与调用前一致
+                    if (rawVersion != verison) {
+                        if (log.isTraceEnabled()) {
+                            log.trace("另一线程已更新版本，忽略本次更新");
+                        }
+                        return;
+                    }
+                    int newVersion = ((AsyncResponseHandler) responseHandler).compareAndIncrementVersion(verison);
+                    if (newVersion == verison) {
+                        if (log.isTraceEnabled()) {
+                            log.trace("版本更新成功，回掉感知接口");
+                        }
+                        verison++;
+                        ((AsyncResponseHandler) responseHandler).finish(crawler.wrapper());
+                    } else {
+                        verison = newVersion;
+                        if (log.isTraceEnabled()) {
+                            log.trace("版本更新失败，最新版本为 -> {}", verison);
+                        }
+                    }
+                }
+            } else if (responseHandler instanceof ComponentFinishAware) {
+                ((ComponentFinishAware) responseHandler).finish(crawler.wrapper());
             }
         }
     }

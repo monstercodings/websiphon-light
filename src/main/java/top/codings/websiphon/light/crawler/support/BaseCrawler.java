@@ -45,6 +45,8 @@ public class BaseCrawler extends CombineCrawler {
         }
         if (config.getMaxConcurrentProcessing() <= 0) {
             config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors() + 1);
+        } else {
+            config.setMaxConcurrentProcessing(config.getMaxConcurrentProcessing() + 1);
         }
         if (null == requester) {
             if (StringUtils.isBlank(config.getRequesterClass())) {

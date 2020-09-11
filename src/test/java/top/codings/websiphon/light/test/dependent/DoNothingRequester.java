@@ -1,5 +1,6 @@
 package top.codings.websiphon.light.test.dependent;
 
+import top.codings.websiphon.light.config.RequesterConfig;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
 import top.codings.websiphon.light.requester.IRequest;
@@ -18,6 +19,10 @@ public class DoNothingRequester extends CombineRequester {
     private IResponseHandler responseHandler;
 
     public DoNothingRequester() {
+        super(null);
+    }
+
+    public DoNothingRequester(RequesterConfig config) {
         super(null);
     }
 
@@ -88,8 +93,9 @@ public class DoNothingRequester extends CombineRequester {
         }
         exe.shutdownNow();
         try {
-            exe.awaitTermination(1, TimeUnit.MINUTES);
+            exe.awaitTermination(15, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

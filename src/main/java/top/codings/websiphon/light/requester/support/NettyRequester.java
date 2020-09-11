@@ -166,7 +166,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
             channelFuture.channel().closeFuture().addListener((ChannelFutureListener) inChannelFuture -> {
                 request.lock();
                 try {
-                    if (request.requestResult == null) {
+                    if (request.requestResult == null && request.getStatus() != IRequest.Status.TIMEOUT) {
                         request.requestResult = new IRequest.RequestResult();
                         request.requestResult.setSucceed(false);
                         request.setStatus(IRequest.Status.ERROR);
@@ -235,7 +235,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                     protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
                         request.lock();
                         try {
-                            if (null != request.requestResult) {
+                            if (null != request.requestResult || request.getStatus() == IRequest.Status.TIMEOUT) {
                                 return;
                             }
                             request.requestResult = new IRequest.RequestResult();
@@ -255,7 +255,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                     protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpResponse httpResponse) throws Exception {
                         request.lock();
                         try {
-                            if (null != request.requestResult) {
+                            if (null != request.requestResult || request.getStatus() == IRequest.Status.TIMEOUT) {
                                 return;
                             }
                             request.setStatus(IRequest.Status.RESPONSE);
@@ -342,7 +342,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
                         request.lock();
                         try {
-                            if (null != request.requestResult) {
+                            if (null != request.requestResult || request.getStatus() == IRequest.Status.TIMEOUT) {
                                 return;
                             }
                             request.setStatus(IRequest.Status.ERROR);
