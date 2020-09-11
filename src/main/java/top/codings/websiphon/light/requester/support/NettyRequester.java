@@ -170,7 +170,17 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                         request.requestResult = new IRequest.RequestResult();
                         request.requestResult.setSucceed(false);
                         request.setStatus(IRequest.Status.ERROR);
-                        request.requestResult.setThrowable(new FrameworkException("未知原因通道关闭"));
+                        FrameworkException exception;
+                        if (
+                                channelFuture.channel().eventLoop().isShutdown() ||
+                                        channelFuture.channel().eventLoop().isTerminated() ||
+                                        channelFuture.channel().eventLoop().isShuttingDown()
+                        ) {
+                            exception = new FrameworkException("请求任务被中止");
+                        } else {
+                            exception = new FrameworkException("请求任务的Http连接被异常关闭，可能是对方网站服务器关闭了该连接");
+                        }
+                        request.requestResult.setThrowable(exception);
                         if (null != responseHandler && getStrategy() == NetworkErrorStrategy.RESPONSE) {
                             responseHandler.handle(request);
                         }
