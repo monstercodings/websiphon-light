@@ -11,8 +11,6 @@ import top.codings.websiphon.light.function.processor.support.Text2DocProcessor;
 import top.codings.websiphon.light.loader.anno.Shared;
 import top.codings.websiphon.light.requester.IRequest;
 
-import java.util.concurrent.locks.ReentrantLock;
-
 @Slf4j
 @Shared
 public class TestResponseHandler extends StatResponseHandler<IRequest> {
@@ -50,6 +48,6 @@ public class TestResponseHandler extends StatResponseHandler<IRequest> {
         }/* finally {
             lock.unlock();
         }*/
-        crawler.shutdown();
+//        crawler.shutdown();
     }
 }

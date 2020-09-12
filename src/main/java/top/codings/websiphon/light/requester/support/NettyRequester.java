@@ -163,6 +163,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
             connectFuture = bootstrap.connect(host, port);
         }
         connectFuture.addListener((ChannelFutureListener) channelFuture -> {
+            request.setChannel(channelFuture.channel());
             channelFuture.channel().closeFuture().addListener((ChannelFutureListener) inChannelFuture -> {
                 request.lock();
                 try {
@@ -194,6 +195,11 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                 channelError(request, channelFuture.channel(), channelFuture.cause());
                 return;
             }
+            // 检查是否任务是否超时
+            if (request.getStatus() == IRequest.Status.TIMEOUT) {
+                channelFuture.channel().close();
+                return;
+            }
             Proxy proxy = (Proxy) channelFuture.channel().attr(AttributeKey.valueOf("proxy")).get();
             if (null != proxy) {
                 String uristr = host + ":" + finalPort;
@@ -201,34 +207,31 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                         HttpVersion.HTTP_1_1, HttpMethod.CONNECT, uristr, Unpooled.EMPTY_BUFFER);
                 defaultFullHttpRequest.headers().set("Host", uristr);
                 channelFuture.channel().pipeline().addLast("@HttpClientCodec", new HttpClientCodec());
-                channelFuture.channel().writeAndFlush(defaultFullHttpRequest).addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture future) throws Exception {
-                        if (!future.isSuccess()) {
-                            channelError(request, future.channel(), future.cause());
-                            return;
-                        }
-                        future.channel().pipeline()
-                                .addLast("@HttpObjectAggregator", new HttpObjectAggregator(Integer.MAX_VALUE))
-                                .addLast("@ProxyHandler", new SimpleChannelInboundHandler<HttpResponse>() {
-                                    @Override
-                                    protected void channelRead0(ChannelHandlerContext ctx, HttpResponse msg) throws Exception {
-                                        if (msg.decoderResult().isSuccess() && msg.status().code() == 200) {
-                                            ctx.channel().pipeline().remove("@HttpClientCodec");
-                                            ctx.channel().pipeline().remove("@HttpObjectAggregator");
-                                            ctx.channel().pipeline().remove("@ProxyHandler");
-                                            doTargetRequest(request, uri, scheme, host, finalPort, ctx.channel());
-                                            return;
-                                        }
-                                        channelError(request, ctx.channel(), new FrameworkException("无法连接代理服务器"));
-                                    }
-
-                                    @Override
-                                    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                                        channelError(request, ctx.channel(), cause);
-                                    }
-                                });
+                channelFuture.channel().writeAndFlush(defaultFullHttpRequest).addListener((ChannelFutureListener) future -> {
+                    if (!future.isSuccess()) {
+                        channelError(request, future.channel(), future.cause());
+                        return;
                     }
+                    future.channel().pipeline()
+                            .addLast("@HttpObjectAggregator", new HttpObjectAggregator(Integer.MAX_VALUE))
+                            .addLast("@ProxyHandler", new SimpleChannelInboundHandler<HttpResponse>() {
+                                @Override
+                                protected void channelRead0(ChannelHandlerContext ctx, HttpResponse msg) throws Exception {
+                                    if (msg.decoderResult().isSuccess() && msg.status().code() == 200) {
+                                        ctx.channel().pipeline().remove("@HttpClientCodec");
+                                        ctx.channel().pipeline().remove("@HttpObjectAggregator");
+                                        ctx.channel().pipeline().remove("@ProxyHandler");
+                                        doTargetRequest(request, uri, scheme, host, finalPort, ctx.channel());
+                                        return;
+                                    }
+                                    channelError(request, ctx.channel(), new FrameworkException("无法连接代理服务器"));
+                                }
+
+                                @Override
+                                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                                    channelError(request, ctx.channel(), cause);
+                                }
+                            });
                 });
                 return;
             }
@@ -239,6 +242,10 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     }
 
     private void doTargetRequest(NettyRequest request, URI uri, String scheme, String host, int finalPort, Channel channel) {
+        // 检查任务是否超时
+        if (request.getStatus() == IRequest.Status.TIMEOUT) {
+            return;
+        }
         channel.pipeline()
                 .addLast("@IdleStateHandler", new IdleStateHandler(0, 0, config.getIdleTimeMillis(), TimeUnit.MILLISECONDS) {
                     @Override
@@ -383,14 +390,6 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                 .set("Host", host + ":" + finalPort)
                 .set("Origin", uri.toString())
                 .set("Referer", uri.toString())
-//                        .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3")
-//                        .set("Accept-Encoding", "gzip, deflate, compress")
-//                        .set("Accept-Language", "zh-CN,zh;q=0.9")
-//                        .set("Cache-Control", "no-cache")
-//                        .set("Connection", "keep-alive")
-//                        .set("DNT", "1")
-//                        .set("Upgrade-Insecure-Requests", "1")
-//                        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
         ;
         channel.writeAndFlush(httpRequest).addListener((ChannelFutureListener) innerFuture -> {
             if (!innerFuture.isSuccess()) {
@@ -402,6 +401,9 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
     private void channelError(NettyRequest request, Channel channel, Throwable throwable) {
         request.lock();
         try {
+            if (request.getStatus() == IRequest.Status.TIMEOUT) {
+                return;
+            }
             if (request.requestResult == null) {
                 request.setStatus(IRequest.Status.ERROR);
                 request.requestResult = new IRequest.RequestResult();

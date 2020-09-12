@@ -11,7 +11,7 @@ import top.codings.websiphon.light.requester.IRequest;
 public class ContentPrintProcessor extends AbstractProcessor<String> {
     @Override
     protected Object process0(String data, IRequest request, ICrawler crawler) throws Exception {
-        String content = data.length() > 200 ? data.substring(0, 200) : data;
+        String content = data.length() > 2 ? data.substring(0, 2) : data;
 //                content = data;
         log.debug("[{}] 响应内容:{}", request.getRequestResult().getCode(), content);
         return data;

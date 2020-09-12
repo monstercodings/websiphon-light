@@ -49,6 +49,8 @@ public interface IRequest<T> {
 
     void unlock();
 
+    void stop();
+
     /**
      * 释放所持有的全部资源<br/>
      * 帮助GC快速回收

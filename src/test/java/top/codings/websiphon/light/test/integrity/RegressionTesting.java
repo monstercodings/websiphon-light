@@ -36,14 +36,15 @@ public class RegressionTesting {
                 log.error("爬虫启动失败", throwable.getCause());
             } else {
                 log.debug("[{}]爬虫启动", crawler.config().getName());
-                crawler.push(
-                        "https://www.baidu.com/"
+                for (int i = 0; i < 1; i++) {
+                    crawler.push(
+                            "https://n.eastday.com/pnews/1599866645023179"
 //                        "https://video.twimg.com/ext_tw_video/1295151252536401920/pu/vid/640x352/wpx5Lo0lKRax12hV.mp4?tag=10"
 //                        "https://video.twimg.com/ext_tw_video/1299719026067808257/pu/pl/BAQ392kyqXKXAlqm.m3u8?tag=10",
 //                        "https://www.google.com.hk",
 //                        ,new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1080))
-                );
-                crawler.push("https://www.baidu.com/?t=1");
+                    );
+                }
             }
         });
         /*ICrawler crawler2 = createCrawler("2号", responseHandler, requester);
@@ -80,8 +81,8 @@ public class RegressionTesting {
                 requester
         )
                 .wrapBy(new FakeCrawler())
-                .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler(5, 2000, 0.7f, (request, c) -> {
+//                .wrapBy(new FiltrateCrawler())
+                .wrapBy(new RateLimitCrawler(50, 300, 0.7f, (request, c) -> {
                     log.debug("请求任务超时 -> {}", request.getUri().toString());
                 }));
         return crawler;

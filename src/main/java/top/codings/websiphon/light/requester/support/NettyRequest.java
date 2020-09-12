@@ -1,5 +1,6 @@
 package top.codings.websiphon.light.requester.support;
 
+import io.netty.channel.Channel;
 import io.netty.handler.codec.http.HttpRequest;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,6 +12,8 @@ import java.util.Map;
 @Setter
 public class NettyRequest extends BaseRequest<HttpRequest> {
     protected HttpRequest httpRequest;
+    @Setter
+    private Channel channel;
 
     public NettyRequest(HttpRequest httpRequest) {
         this(httpRequest, null);
@@ -30,6 +33,13 @@ public class NettyRequest extends BaseRequest<HttpRequest> {
             }
             httpRequest.headers().set(s, o);
         });
+    }
+
+    @Override
+    public void stop() {
+        if (null != channel) {
+            channel.close();
+        }
     }
 
     @Override

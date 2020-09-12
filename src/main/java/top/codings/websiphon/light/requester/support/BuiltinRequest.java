@@ -65,6 +65,11 @@ public class BuiltinRequest extends BaseRequest<HttpRequest> {
         httpRequest = builder.build();
     }
 
+    @Override
+    public void stop() {
+
+    }
+
     /**
      * 释放所持有的全部资源<br/>
      * 帮助GC快速回收

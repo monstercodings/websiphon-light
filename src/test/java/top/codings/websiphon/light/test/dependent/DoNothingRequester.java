@@ -60,6 +60,11 @@ public class DoNothingRequester extends CombineRequester {
             }
 
             @Override
+            public void stop() {
+
+            }
+
+            @Override
             public Object getHttpRequest() {
                 return null;
             }

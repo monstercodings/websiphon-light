@@ -28,17 +28,17 @@ public abstract class BaseRequest<T> implements IRequest<T> {
     private ReentrantLock lock = new ReentrantLock();
 
     @Override
-    public void lock() {
+    public final void lock() {
         lock.lock();
     }
 
     @Override
-    public boolean tryLock() {
+    public final boolean tryLock() {
         return lock.tryLock();
     }
 
     @Override
-    public void unlock() {
+    public final void unlock() {
         lock.unlock();
     }
 

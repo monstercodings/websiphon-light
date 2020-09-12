@@ -137,6 +137,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
                                 }
                             }
                             inner.request.setStatus(IRequest.Status.TIMEOUT);
+                            inner.request.stop();
                         }
                     } finally {
                         inner.request.unlock();

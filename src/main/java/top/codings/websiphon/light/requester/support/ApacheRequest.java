@@ -32,6 +32,11 @@ public class ApacheRequest extends BaseRequest<HttpRequestBase> {
     }
 
     @Override
+    public void stop() {
+
+    }
+
+    @Override
     public void release() {
         super.release();
         httpRequest = null;
