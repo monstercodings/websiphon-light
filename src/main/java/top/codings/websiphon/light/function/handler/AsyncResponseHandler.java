@@ -4,6 +4,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
+import top.codings.websiphon.light.function.ComponentCountAware;
 import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.*;
@@ -16,7 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Slf4j
 public abstract class AsyncResponseHandler<T extends IRequest>
-        extends AbstractResponseHandler<T> implements QueueResponseHandler<T, ICrawler> {
+        extends AbstractResponseHandler<T> implements QueueResponseHandler<T, ICrawler>, ComponentCountAware {
     private static final String NAME = "processors";
     private ExecutorService exe;
     private LinkedTransferQueue<T> queue;
@@ -171,6 +172,11 @@ public abstract class AsyncResponseHandler<T extends IRequest>
             return nowVersion;
         }
         return versionConcurrency.get();
+    }
+
+    @Override
+    public int count() {
+        return queue.size();
     }
 
     protected void beforeHandle(T request, ICrawler crawler) throws Exception {
