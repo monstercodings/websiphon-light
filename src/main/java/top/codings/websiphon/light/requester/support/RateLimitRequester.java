@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.function.ComponentCountAware;
 import top.codings.websiphon.light.function.ComponentFinishAware;
 import top.codings.websiphon.light.function.handler.AsyncResponseHandler;
 import top.codings.websiphon.light.function.handler.IResponseHandler;
@@ -17,7 +18,7 @@ import java.util.function.BiConsumer;
 import static top.codings.websiphon.light.requester.IRequest.Status.*;
 
 @Slf4j
-public class RateLimitRequester extends CombineRequester<IRequest> {
+public class RateLimitRequester extends CombineRequester<IRequest> implements ComponentCountAware {
     private static final String NAME = "ratelimit";
     /**
      * 限制内存占用的阈值
@@ -266,6 +267,11 @@ public class RateLimitRequester extends CombineRequester<IRequest> {
         // 已使用JVM内存百分比
         float usePercent = usedMemory * 1f / jvmMaxMoryByte;
         return usePercent;
+    }
+
+    @Override
+    public int count() {
+        return queue.size() + timeoutQueue.size();
     }
 
     private static class Inner implements Delayed {

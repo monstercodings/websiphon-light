@@ -5,13 +5,14 @@ import top.codings.websiphon.light.crawler.CombineCrawler;
 import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.crawler.RateLimitableCrawler;
 import top.codings.websiphon.light.error.FrameworkException;
+import top.codings.websiphon.light.function.ComponentCountAware;
 import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.requester.support.CombineRequester;
 import top.codings.websiphon.light.requester.support.RateLimitRequester;
 
 import java.util.function.BiConsumer;
 
-public class RateLimitCrawler extends CombineCrawler implements RateLimitableCrawler {
+public class RateLimitCrawler extends CombineCrawler implements RateLimitableCrawler, ComponentCountAware {
     private static final float DEFAULT_LIMIT_MEMORY = 0.7f;
     @Setter
     private float limitMemory;
@@ -23,6 +24,7 @@ public class RateLimitCrawler extends CombineCrawler implements RateLimitableCra
     private int taskTimeoutMillis;
     @Setter
     private BiConsumer<IRequest, ICrawler> timeoutHandler;
+    private RateLimitRequester requester;
 
     public RateLimitCrawler() {
         this(DEFAULT_MAX_NETWORK_CONCURRENCY, DEFAULT_TASK_TIMEOUT_MILLIS, DEFAULT_LIMIT_MEMORY, null);
@@ -57,7 +59,7 @@ public class RateLimitCrawler extends CombineCrawler implements RateLimitableCra
     @Override
     protected void doProxy() {
         CombineRequester oldRequester = getRequester();
-        RateLimitRequester requester = new RateLimitRequester(
+        requester = new RateLimitRequester(
                 oldRequester,
                 maxNetworkConcurrency,
                 taskTimeoutMillis,
@@ -70,5 +72,10 @@ public class RateLimitCrawler extends CombineCrawler implements RateLimitableCra
     @Override
     public BiConsumer<IRequest, ICrawler> timeoutHandler() {
         return timeoutHandler;
+    }
+
+    @Override
+    public int count() {
+        return ((ComponentCountAware) requester).count();
     }
 }

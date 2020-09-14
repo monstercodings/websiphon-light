@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class StatRequester extends CombineRequester<IRequest> {
-    private static final String NAME = "统计请求器";
+    private static final String NAME = "stat";
     @Setter
     private boolean debug;
     private DataStat dataStat;
