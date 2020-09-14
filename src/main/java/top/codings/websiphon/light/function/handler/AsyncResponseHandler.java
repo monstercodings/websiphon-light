@@ -69,6 +69,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
                         } catch (Exception e) {
                             log.error("响应处理发生异常", e);
                         } finally {
+                            int nowVersion = verison;
                             String useTime = String.format("%.3f", (System.currentTimeMillis() - start) / 1000f);
                             request.setStatus(IRequest.Status.FINISH);
                             token.release();
@@ -85,7 +86,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
                                     CombineCrawler n = (CombineCrawler) crawler;
                                     c = n.wrapper();
                                 }
-                                verifyBusy(c, verison);
+                                verifyBusy(c, nowVersion);
                             }
                         }
                     });

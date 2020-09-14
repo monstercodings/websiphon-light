@@ -91,14 +91,14 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                     timeoutQueue.offer(inner);
                     requester.execute(request)
                             .whenCompleteAsync((aVoid, throwable) -> {
-                                // 移除成功说明尚未超时，需要检查任务是否完成
+                                int nowVersion = verison;
                                 if (timeoutQueue.remove(inner)) {
                                     if (null != token) {
                                         token.release();
                                     }
                                     inner.release();
-                                    verifyBusy(verison);
                                 }
+                                verifyBusy(nowVersion);
                             })
                     ;
                 } catch (InterruptedException e) {
@@ -122,14 +122,13 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                     if (inner == null) {
                         continue;
                     }
-                    if (null != token) {
-                        // 先进行令牌的释放，帮助后续网络请求能更快的发送
-                        token.release();
-                    }
+                    int nowVersion = verison;
                     inner.request.lock();
+                    boolean needReleaseToken = false;
                     try {
                         IRequest.Status status = inner.request.getStatus();
                         if (status == WAIT || status == READY || status == REQUEST) {
+                            needReleaseToken = true;
                             if (null != timeoutHandler) {
                                 try {
                                     timeoutHandler.accept(inner.request, crawler.wrapper());
@@ -141,9 +140,12 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                             inner.request.stop();
                         }
                     } finally {
+                        if (null != token && needReleaseToken) {
+                            token.release();
+                        }
                         inner.request.unlock();
+                        verifyBusy(nowVersion);
                     }
-                    verifyBusy(verison);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -158,34 +160,35 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
     }
 
     private void verifyBusy(final int rawVersion) {
-        if (queue.isEmpty() && timeoutQueue.isEmpty() && !crawler.wrapper().isBusy()) {
-            IResponseHandler responseHandler = getResponseHandler();
-            if (responseHandler instanceof AsyncResponseHandler) {
-                synchronized (this) {
-                    // 检查对象内并发的版本号是否与调用前一致
-                    if (rawVersion != verison) {
-                        if (log.isTraceEnabled()) {
-                            log.trace("另一线程已更新版本，忽略本次更新");
-                        }
-                        return;
+        if (crawler.wrapper().isBusy()) {
+            return;
+        }
+        IResponseHandler responseHandler = getResponseHandler();
+        if (responseHandler instanceof AsyncResponseHandler) {
+            synchronized (this) {
+                // 检查对象内并发的版本号是否与调用前一致
+                if (rawVersion != verison) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("另一线程已更新版本，忽略本次更新");
                     }
-                    int newVersion = ((AsyncResponseHandler) responseHandler).compareAndIncrementVersion(verison);
-                    if (newVersion == verison) {
-                        if (log.isTraceEnabled()) {
-                            log.trace("版本更新成功，回掉感知接口");
-                        }
-                        verison++;
-                        ((AsyncResponseHandler) responseHandler).finish(crawler.wrapper());
-                    } else {
-                        verison = newVersion;
-                        if (log.isTraceEnabled()) {
-                            log.trace("版本更新失败，最新版本为 -> {}", verison);
-                        }
+                    return;
+                }
+                int newVersion = ((AsyncResponseHandler) responseHandler).compareAndIncrementVersion(verison);
+                if (newVersion == verison) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("版本更新成功，回掉感知接口");
+                    }
+                    verison++;
+                    ((AsyncResponseHandler) responseHandler).finish(crawler.wrapper());
+                } else {
+                    verison = newVersion;
+                    if (log.isTraceEnabled()) {
+                        log.trace("版本更新失败，最新版本为 -> {}", verison);
                     }
                 }
-            } else if (responseHandler instanceof ComponentFinishAware) {
-                ((ComponentFinishAware) responseHandler).finish(crawler.wrapper());
             }
+        } else if (responseHandler instanceof ComponentFinishAware) {
+            ((ComponentFinishAware) responseHandler).finish(crawler.wrapper());
         }
     }
 
