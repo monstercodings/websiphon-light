@@ -62,10 +62,14 @@ public abstract class AsyncResponseHandler<T extends IRequest>
                             request.setStatus(IRequest.Status.PROCESS);
                             beforeHandle(request, crawler);
                             handle(request, crawler);
-                            afterHandle(request, crawler);
                         } catch (Exception e) {
                             log.error("响应处理发生异常", e);
                         } finally {
+                            try {
+                                afterHandle(request, crawler);
+                            } catch (Exception e) {
+                                log.error("后置处理发生异常", e);
+                            }
                             int nowVersion = currentVersion();
                             String useTime = String.format("%.3f", (System.currentTimeMillis() - start) / 1000f);
                             request.setStatus(IRequest.Status.FINISH);
@@ -133,6 +137,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
 
     /**
      * 检测是否繁忙，如果空闲使用版本号原子操作确保并发情况下只调用一次完成回调感知接口
+     *
      * @param crawler
      * @param currentVersion
      */
@@ -183,7 +188,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
 
     }
 
-    protected void afterHandle(T request, ICrawler crawler) throws Exception {
+    protected void afterHandle(T request, ICrawler crawler) {
 
     }
 

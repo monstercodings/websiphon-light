@@ -12,7 +12,7 @@ import top.codings.websiphon.light.requester.IRequest;
  */
 public abstract class StatResponseHandler<T extends IRequest> extends ChainResponseHandler<T> {
     @Override
-    protected void afterHandle(T request, ICrawler crawler) throws Exception {
+    protected void afterHandle(T request, ICrawler crawler) {
         if (crawler instanceof CombineCrawler) {
             CombineCrawler combineCrawler = (CombineCrawler) crawler;
             combineCrawler.find(StatisticalCrawler.class).ifPresent(statisticalCrawler -> statisticalCrawler.stat().getResponseCountTotal().increment());
