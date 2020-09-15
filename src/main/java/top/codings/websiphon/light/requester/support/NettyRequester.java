@@ -299,14 +299,6 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                             }
                             int code = httpResponse.status().code();
                             request.requestResult.setCode(code);
-                            if (code < 200 || code >= 300) {
-                                request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
-                                request.requestResult.setData("");
-                                if (null != responseHandler) {
-                                    responseHandler.handle(request);
-                                }
-                                return;
-                            }
                             String contentTypeStr = httpResponse.headers().get("content-type");
                             byte[] body;
                             if (httpResponse instanceof FullHttpResponse) {
@@ -315,7 +307,16 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                             } else {
                                 log.warn("响应类型尚未有处理方案 -> %s", httpResponse.getClass().getName());
                                 request.requestResult.setSucceed(false);
-                                request.requestResult.setThrowable(new RuntimeException("响应类型不匹配"));
+                                request.requestResult.setThrowable(new FrameworkException("响应类型不匹配"));
+                                return;
+                            }
+                            if (code < 200 || code >= 300) {
+                                request.requestResult.setData(body);
+                                request.requestResult.setSucceed(false);
+                                request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
+                                if (null != responseHandler) {
+                                    responseHandler.handle(request);
+                                }
                                 return;
                             }
                             Charset charset = null;

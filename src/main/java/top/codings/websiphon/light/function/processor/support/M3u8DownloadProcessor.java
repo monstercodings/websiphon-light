@@ -76,14 +76,6 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         ) {
             return data;
         }
-        int code = request.getRequestResult().getCode();
-        if (code < 200 || code >= 300) {
-            if (userData instanceof UserDataStack) {
-                ((UserDataStack) userData).finish.set(true);
-                request.setUserData(((UserDataStack) userData).getUserData());
-            }
-            return data;
-        }
         UserDataStack stack;
         if (userData instanceof UserDataStack) {
             stack = (UserDataStack) userData;
