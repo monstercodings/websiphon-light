@@ -316,7 +316,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                                 request.requestResult.setThrowable(
                                         new FrameworkException(String.format("响应码异常[%d]", code)));
                                 request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
-                                if (null != responseHandler) {
+                                if (getStrategy() == NetworkErrorStrategy.RESPONSE && null != responseHandler) {
                                     responseHandler.handle(request);
                                 }
                                 return;

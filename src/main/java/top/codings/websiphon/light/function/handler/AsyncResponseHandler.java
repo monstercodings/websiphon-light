@@ -45,13 +45,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     // 先阻塞获取任务
-                    T request = queue.poll(30, TimeUnit.SECONDS);
-                    if (null == request) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("当前剩余响应 -> {}", queue.size());
-                        }
-                        continue;
-                    }
+                    T request = queue.take();
                     // 获取令牌
                     token.acquire();
                     // 将标记位恢复
