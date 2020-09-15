@@ -38,7 +38,7 @@ public class RegressionTesting {
                 log.debug("[{}]爬虫启动", crawler.config().getName());
                 for (int i = 0; i < 1; i++) {
                     crawler.push(
-                            "https://n.eastday.com/pnews/1599866645023179"
+                            "https://baotou.focus.cn/loupan/q331_t4/"
 //                        "https://video.twimg.com/ext_tw_video/1295151252536401920/pu/vid/640x352/wpx5Lo0lKRax12hV.mp4?tag=10"
 //                        "https://video.twimg.com/ext_tw_video/1299719026067808257/pu/pl/BAQ392kyqXKXAlqm.m3u8?tag=10",
 //                        "https://www.google.com.hk",

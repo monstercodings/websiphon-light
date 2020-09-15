@@ -153,8 +153,6 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
         } finally {
             request.unlock();
         }
-
-        log.debug("正常请求");
         int finalPort = port;
         ChannelFuture connectFuture;
         // TODO 需要妥善处理非HTTP代理协议的请求
