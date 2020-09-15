@@ -76,6 +76,14 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
         ) {
             return data;
         }
+        int code = request.getRequestResult().getCode();
+        if (code < 200 || code >= 300) {
+            if (userData instanceof UserDataStack) {
+                ((UserDataStack) userData).finish.set(true);
+                request.setUserData(((UserDataStack) userData).getUserData());
+            }
+            return data;
+        }
         UserDataStack stack;
         if (userData instanceof UserDataStack) {
             stack = (UserDataStack) userData;
@@ -112,7 +120,9 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
 
     @Override
     protected void whenError(Throwable throwable, IRequest request, ICrawler crawler) throws Exception {
-        request.setUserData(((UserDataStack) request.getUserData()).userData);
+        if (request.getUserData() instanceof UserDataStack) {
+            request.setUserData(((UserDataStack) request.getUserData()).userData);
+        }
     }
 
     private void stageOne(byte[] data, IRequest request, ICrawler crawler) {
