@@ -313,6 +313,8 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                             if (code < 200 || code >= 300) {
                                 request.requestResult.setData(body);
                                 request.requestResult.setSucceed(false);
+                                request.requestResult.setThrowable(
+                                        new FrameworkException(String.format("响应码异常[%d]", code)));
                                 request.requestResult.setResponseType(IRequest.ResponseType.ERROR_CODE);
                                 if (null != responseHandler) {
                                     responseHandler.handle(request);
