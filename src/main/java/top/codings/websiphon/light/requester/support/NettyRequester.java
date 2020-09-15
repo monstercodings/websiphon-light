@@ -131,7 +131,8 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
 
     @Override
     public CompletableFuture<NettyRequest> execute(final NettyRequest request) {
-        CompletableFuture<NettyRequest> cf = new CompletableFuture();
+        CompletableFuture cf = new CompletableFuture();
+        request.setFuture(cf);
         URI uri = request.getUri();
         String scheme = uri.getScheme();
         String host = uri.getHost();
@@ -143,6 +144,17 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                 port = 80;
             }
         }
+        request.lock();
+        try {
+            if (request.getStatus() == IRequest.Status.TIMEOUT) {
+                cf.complete(this);
+                return cf;
+            }
+        } finally {
+            request.unlock();
+        }
+
+        log.debug("正常请求");
         int finalPort = port;
         ChannelFuture connectFuture;
         // TODO 需要妥善处理非HTTP代理协议的请求
@@ -186,7 +198,7 @@ public class NettyRequester extends CombineRequester<NettyRequest> {
                             responseHandler.handle(request);
                         }
                     }
-                    cf.completeAsync(() -> request);
+                    cf.complete(request);
                 } finally {
                     request.unlock();
                 }

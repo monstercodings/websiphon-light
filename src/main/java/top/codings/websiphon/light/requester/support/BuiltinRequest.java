@@ -1,17 +1,13 @@
 package top.codings.websiphon.light.requester.support;
 
-import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 @Getter
 @Setter
@@ -39,13 +35,13 @@ public class BuiltinRequest extends BaseRequest<HttpRequest> {
                 .expectContinue(httpRequest.expectContinue());
         Map<String, String> headerMap = new ConcurrentHashMap<>();
         httpRequest.headers().map().entrySet().parallelStream()
-        .forEach(stringListEntry -> {
-            String key = stringListEntry.getKey();
-            String value = stringListEntry.getValue().parallelStream()
-                    .reduce((s, s2) -> String.join(";")).get();
-            headerMap.put(key, value);
-            builder.header(key, value);
-        });
+                .forEach(stringListEntry -> {
+                    String key = stringListEntry.getKey();
+                    String value = stringListEntry.getValue().parallelStream()
+                            .reduce((s, s2) -> String.join(";")).get();
+                    headerMap.put(key, value);
+                    builder.header(key, value);
+                });
         headers.forEach((k, v) -> {
             if (headerMap.containsKey(k)) {
                 return;
@@ -67,7 +63,6 @@ public class BuiltinRequest extends BaseRequest<HttpRequest> {
 
     @Override
     public void stop() {
-
     }
 
     /**

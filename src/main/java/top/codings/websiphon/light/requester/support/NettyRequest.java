@@ -38,7 +38,13 @@ public class NettyRequest extends BaseRequest<HttpRequest> {
     @Override
     public void stop() {
         if (null != channel) {
+            System.out.println("关闭通道");
             channel.close();
+            return;
+        }
+        if (future != null) {
+            System.out.println("主动停止");
+            future.complete(this);
         }
     }
 

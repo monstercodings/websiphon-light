@@ -7,6 +7,7 @@ import top.codings.websiphon.light.requester.IRequest;
 
 import java.net.Proxy;
 import java.net.URI;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Getter
@@ -25,6 +26,8 @@ public abstract class BaseRequest<T> implements IRequest<T> {
     @Getter
     @Setter
     protected Proxy proxy;
+    @Setter
+    protected CompletableFuture future;
     private ReentrantLock lock = new ReentrantLock();
 
     @Override

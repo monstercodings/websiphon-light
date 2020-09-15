@@ -8,6 +8,7 @@ import org.apache.http.entity.ContentType;
 import java.net.Proxy;
 import java.net.URI;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public interface IRequest<T> {
     T getHttpRequest();
@@ -50,6 +51,8 @@ public interface IRequest<T> {
     void unlock();
 
     void stop();
+
+    void setFuture(CompletableFuture future);
 
     /**
      * 释放所持有的全部资源<br/>

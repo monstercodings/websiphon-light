@@ -9,8 +9,6 @@ import top.codings.websiphon.light.requester.IRequest;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 具备异步处理能力的响应管理器
@@ -25,12 +23,11 @@ public abstract class AsyncResponseHandler<T extends IRequest>
     /**
      * 该锁用于防止并发响应过程中同时调用完成感知接口的情况
      */
-    private Lock lock = new ReentrantLock();
+//    private Lock lock = new ReentrantLock();
     /**
      * 版本号用于保证每次完成任务时，请求队列监视器和响应管理器只能有其一允许调用完成感知接口
      */
     private AtomicInteger versionConcurrency = new AtomicInteger(0);
-    private volatile int verison;
     /**
      * 用于防止非原子操作造成的任务完成情况误判
      */
@@ -69,7 +66,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
                         } catch (Exception e) {
                             log.error("响应处理发生异常", e);
                         } finally {
-                            int nowVersion = verison;
+                            int nowVersion = currentVersion();
                             String useTime = String.format("%.3f", (System.currentTimeMillis() - start) / 1000f);
                             request.setStatus(IRequest.Status.FINISH);
                             token.release();
@@ -134,32 +131,33 @@ public abstract class AsyncResponseHandler<T extends IRequest>
         );
     }
 
-    private void verifyBusy(ICrawler crawler, final int rawVersion) {
+    /**
+     * 检测是否繁忙，如果空闲使用版本号原子操作确保并发情况下只调用一次完成回调感知接口
+     * @param crawler
+     * @param currentVersion
+     */
+    public void verifyBusy(final ICrawler crawler, final int currentVersion) {
+        if (crawler.isBusy()) {
+            return;
+        }
         if (log.isTraceEnabled()) {
             log.trace("响应处理完成，检查任务是否全部完成");
         }
-        synchronized (this) {
-            // 检查对象内并发的版本号是否与调用前一致
-            if (rawVersion != verison) {
-                if (log.isTraceEnabled()) {
-                    log.trace("另一处理线程已更新版本，忽略本次更新");
-                }
-                return;
+        // 检查对象内并发的版本号是否与调用前一致
+        if (!compareAndIncrementVersion(currentVersion)) {
+            if (log.isDebugEnabled()) {
+                log.debug("另一处理线程已更新版本，忽略本次更新");
             }
-            int newVersion = compareAndIncrementVersion(verison);
-            if (verison == newVersion) {
-                if (log.isTraceEnabled()) {
-                    log.trace("版本更新成功，回掉感知接口");
-                }
-                verison++;
-                finish(crawler);
-            } else {
-                verison = newVersion;
-                if (log.isTraceEnabled()) {
-                    log.trace("版本更新失败，最新版本为 -> {}", verison);
-                }
-            }
+            return;
         }
+        if (log.isDebugEnabled()) {
+            log.debug("版本更新成功，回调完成任务感知接口");
+        }
+        ICrawler c = crawler;
+        if (crawler instanceof CombineCrawler) {
+            c = ((CombineCrawler) crawler).wrapper();
+        }
+        finish(c);
     }
 
     /**
@@ -168,10 +166,11 @@ public abstract class AsyncResponseHandler<T extends IRequest>
      * @param nowVersion 成功时返回的值等于入参，失败时返回的值是最新版本号
      * @return
      */
-    public int compareAndIncrementVersion(int nowVersion) {
-        if (versionConcurrency.compareAndSet(nowVersion, nowVersion + 1)) {
-            return nowVersion;
-        }
+    private boolean compareAndIncrementVersion(int nowVersion) {
+        return versionConcurrency.compareAndSet(nowVersion, nowVersion + 1);
+    }
+
+    public int currentVersion() {
         return versionConcurrency.get();
     }
 

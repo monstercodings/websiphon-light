@@ -34,7 +34,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
     private ExecutorService exe;
     private BiConsumer<IRequest, ICrawler> timeoutHandler;
     private CombineCrawler crawler;
-    private volatile int verison;
     /**
      * 用于防止非原子操作造成的任务完成情况误判
      */
@@ -89,25 +88,25 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                     request.setStatus(REQUEST);
                     Inner inner = new Inner(request, taskTimeoutMillis);
                     timeoutQueue.offer(inner);
-                    requester.execute(request)
-                            .whenCompleteAsync((aVoid, throwable) -> {
-                                int nowVersion = verison;
-                                if (timeoutQueue.remove(inner)) {
-                                    if (null != token) {
-                                        token.release();
-                                    }
-                                    inner.release();
-                                }
-                                verifyBusy(nowVersion);
-                            })
-                    ;
+
+                    CompletableFuture completableFuture = super.execute(request);
+                    completableFuture.whenCompleteAsync((req, throwable) -> {
+                        timeoutQueue.remove(inner);
+                        IResponseHandler responseHandler = getResponseHandler();
+                        int nowVersion = -1;
+                        if (responseHandler instanceof AsyncResponseHandler) {
+                            nowVersion = ((AsyncResponseHandler) responseHandler).currentVersion();
+                        }
+                        if (null != token) {
+                            token.release();
+                        }
+                        inner.release();
+                        verifyBusy(nowVersion);
+                    });
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
-                    if (null != token) {
-                        token.release();
-                    }
                     log.error("获取待处理请求对象失败", e);
                 }
             }
@@ -122,13 +121,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                     if (inner == null) {
                         continue;
                     }
-                    int nowVersion = verison;
                     inner.request.lock();
-                    boolean needReleaseToken = false;
                     try {
                         IRequest.Status status = inner.request.getStatus();
                         if (status == WAIT || status == READY || status == REQUEST) {
-                            needReleaseToken = true;
                             if (null != timeoutHandler) {
                                 try {
                                     timeoutHandler.accept(inner.request, crawler.wrapper());
@@ -140,11 +136,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                             inner.request.stop();
                         }
                     } finally {
-                        if (null != token && needReleaseToken) {
-                            token.release();
-                        }
                         inner.request.unlock();
-                        verifyBusy(nowVersion);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -159,35 +151,13 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
         });
     }
 
-    private void verifyBusy(final int rawVersion) {
-        if (crawler.wrapper().isBusy()) {
-            return;
-        }
+    private void verifyBusy(final int currentVersion) {
         IResponseHandler responseHandler = getResponseHandler();
         if (responseHandler instanceof AsyncResponseHandler) {
-            synchronized (this) {
-                // 检查对象内并发的版本号是否与调用前一致
-                if (rawVersion != verison) {
-                    if (log.isTraceEnabled()) {
-                        log.trace("另一线程已更新版本，忽略本次更新");
-                    }
-                    return;
-                }
-                int newVersion = ((AsyncResponseHandler) responseHandler).compareAndIncrementVersion(verison);
-                if (newVersion == verison) {
-                    if (log.isTraceEnabled()) {
-                        log.trace("版本更新成功，回掉感知接口");
-                    }
-                    verison++;
-                    ((AsyncResponseHandler) responseHandler).finish(crawler.wrapper());
-                } else {
-                    verison = newVersion;
-                    if (log.isTraceEnabled()) {
-                        log.trace("版本更新失败，最新版本为 -> {}", verison);
-                    }
-                }
-            }
-        } else if (responseHandler instanceof ComponentFinishAware) {
+            ((AsyncResponseHandler) responseHandler).verifyBusy(crawler.wrapper(), currentVersion);
+        } else if (
+                (responseHandler instanceof ComponentFinishAware) &&
+                        !crawler.wrapper().isBusy()) {
             ((ComponentFinishAware) responseHandler).finish(crawler.wrapper());
         }
     }
