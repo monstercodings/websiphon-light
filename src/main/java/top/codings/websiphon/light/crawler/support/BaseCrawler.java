@@ -44,9 +44,7 @@ public class BaseCrawler extends CombineCrawler {
             config = CrawlerConfig.builder().build();
         }
         if (config.getMaxConcurrentProcessing() <= 0) {
-            config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors() + 1);
-        } else {
-            config.setMaxConcurrentProcessing(config.getMaxConcurrentProcessing() + 1);
+            config.setMaxConcurrentProcessing(Runtime.getRuntime().availableProcessors());
         }
         if (null == requester) {
             if (StringUtils.isBlank(config.getRequesterClass())) {
@@ -114,9 +112,13 @@ public class BaseCrawler extends CombineCrawler {
 
     @Override
     public boolean isBusy() {
-        boolean isBusy = (responseHandler instanceof QueueResponseHandler) ?
-                ((QueueResponseHandler) responseHandler).isBusy() : false;
-        return getRequester().isBusy() | isBusy;
+        if (getRequester().isBusy()) {
+            return true;
+        }
+        if (responseHandler instanceof QueueResponseHandler) {
+            return ((QueueResponseHandler) responseHandler).isBusy();
+        }
+        return false;
     }
 
     @Override

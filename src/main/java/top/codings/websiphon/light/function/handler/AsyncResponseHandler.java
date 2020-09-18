@@ -7,6 +7,7 @@ import top.codings.websiphon.light.crawler.ICrawler;
 import top.codings.websiphon.light.function.ComponentCountAware;
 import top.codings.websiphon.light.requester.IRequest;
 
+import javax.annotation.Nullable;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -24,6 +25,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
      * 该锁用于防止并发响应过程中同时调用完成感知接口的情况
      */
 //    private Lock lock = new ReentrantLock();
+    private int maxConcurrentProcessiong;
     /**
      * 版本号用于保证每次完成任务时，请求队列监视器和响应管理器只能有其一允许调用完成感知接口
      */
@@ -34,13 +36,14 @@ public abstract class AsyncResponseHandler<T extends IRequest>
     private volatile boolean normal = true;
 
     @Override
-    protected void init(ICrawler crawler, int index) throws Exception {
+    protected void init(final ICrawler crawler, int index) throws Exception {
         if (index > 0) {
             return;
         }
         queue = new LinkedTransferQueue<>();
         exe = Executors.newCachedThreadPool(new DefaultThreadFactory(NAME));
-        token = new Semaphore(config.getMaxConcurrentProcessing() - 1);
+        maxConcurrentProcessiong = config.getMaxConcurrentProcessing();
+        token = new Semaphore(maxConcurrentProcessiong);
         exe.submit(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
@@ -51,38 +54,27 @@ public abstract class AsyncResponseHandler<T extends IRequest>
                     // 将标记位恢复
                     normal = true;
                     exe.submit(() -> {
-                        long start = System.currentTimeMillis();
+                        Throwable cause = null;
                         try {
                             request.setStatus(IRequest.Status.PROCESS);
                             beforeHandle(request, crawler);
                             handle(request, crawler);
                         } catch (Exception e) {
+                            cause = e;
                             log.error("响应处理发生异常", e);
                         } finally {
                             try {
-                                afterHandle(request, crawler);
+                                afterHandle(request, crawler, cause);
                             } catch (Exception e) {
                                 log.error("后置处理发生异常", e);
                             }
+                            // 必须在令牌释放前缓存当前版本号
                             int nowVersion = currentVersion();
-                            String useTime = String.format("%.3f", (System.currentTimeMillis() - start) / 1000f);
                             request.setStatus(IRequest.Status.FINISH);
                             token.release();
                             request.release();
-                            if (log.isTraceEnabled()) {
-                                log.trace("当次处理耗时 [{}s] | 令牌余量 [{}]", useTime, token.availablePermits());
-                            }
                             // 检查爬虫是否已空闲
-                            if (crawler != null && !crawler.isBusy()) {
-                                ICrawler c;
-                                if (!CombineCrawler.class.isAssignableFrom(crawler.getClass())) {
-                                    c = crawler;
-                                } else {
-                                    CombineCrawler n = (CombineCrawler) crawler;
-                                    c = n.wrapper();
-                                }
-                                verifyBusy(c, nowVersion);
-                            }
+                            verifyBusy(crawler, nowVersion);
                         }
                     });
                 } catch (InterruptedException e) {
@@ -123,10 +115,29 @@ public abstract class AsyncResponseHandler<T extends IRequest>
 
     @Override
     public boolean isBusy() {
-        return !(normal &&
-                token.availablePermits() == config.getMaxConcurrentProcessing() - 1 &&
-                queue.isEmpty()
-        );
+        // 若队列不为空则一定有等待执行的任务
+        if (!queue.isEmpty()) {
+            return true;
+        }
+        // 如果令牌不为空则检查令牌数量
+        if (token != null) {
+            int availablePermits = token.availablePermits();
+            // 令牌数量尚未恢复最大值则有正在执行的任务
+            if (availablePermits < maxConcurrentProcessiong) {
+                if (log.isTraceEnabled()) {
+                    log.trace("当前令牌数[{}] | 预置令牌数[{}]", availablePermits, maxConcurrentProcessiong);
+                }
+                return true;
+            }
+        }
+        // 前两项都通过后，检查请求器是否正在提交新响应
+        if (!normal) {
+            if (log.isTraceEnabled()) {
+                log.trace("请求器正在提交新响应");
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -136,11 +147,8 @@ public abstract class AsyncResponseHandler<T extends IRequest>
      * @param currentVersion
      */
     public void verifyBusy(final ICrawler crawler, final int currentVersion) {
-        if (crawler.isBusy()) {
+        if (crawler == null || crawler.isBusy()) {
             return;
-        }
-        if (log.isTraceEnabled()) {
-            log.trace("响应处理完成，检查任务是否全部完成");
         }
         // 检查对象内并发的版本号是否与调用前一致
         if (!compareAndIncrementVersion(currentVersion)) {
@@ -153,7 +161,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
             log.debug("版本更新成功，回调完成任务感知接口");
         }
         ICrawler c = crawler;
-        if (crawler instanceof CombineCrawler) {
+        if (crawler instanceof CombineCrawler || CombineCrawler.class.isAssignableFrom(crawler.getClass())) {
             c = ((CombineCrawler) crawler).wrapper();
         }
         finish(c);
@@ -182,7 +190,7 @@ public abstract class AsyncResponseHandler<T extends IRequest>
 
     }
 
-    protected void afterHandle(T request, ICrawler crawler) {
+    protected void afterHandle(T request, ICrawler crawler, @Nullable Throwable cause) {
 
     }
 

@@ -97,7 +97,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                         if (null != token) {
                             token.release();
                         }
-                        inner.release();
                         verifyBusy(nowVersion);
                     });
                 } catch (InterruptedException e) {
@@ -114,10 +113,7 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
         exe.submit(() -> {
             while (!Thread.currentThread().isInterrupted() && !shutdown) {
                 try {
-                    Inner inner = timeoutQueue.poll(30, TimeUnit.SECONDS);
-                    if (inner == null) {
-                        continue;
-                    }
+                    Inner inner = timeoutQueue.take();
                     inner.request.lock();
                     try {
                         IRequest.Status status = inner.request.getStatus();
@@ -192,14 +188,29 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
 
     @Override
     public boolean isBusy() {
-        if (log.isTraceEnabled()) {
-            log.trace("正常状态:{} | 剩余令牌:{} | 队列为空:{}", normal, token.availablePermits(), queue.isEmpty());
+        // 若队列不为空则一定有等待执行的任务
+        if (!queue.isEmpty()) {
+            return true;
         }
-        boolean tokenStatu = token == null ? true : token.availablePermits() == maxNetworkConcurrency;
-        return !(normal &&
-                tokenStatu &&
-                queue.isEmpty())
-                ;
+        // 如果令牌不为空则检查令牌数量
+        if (token != null) {
+            int availablePermits = token.availablePermits();
+            // 令牌数量尚未恢复最大值则有正在执行的任务
+            if (availablePermits < maxNetworkConcurrency) {
+                if (log.isTraceEnabled()) {
+                    log.trace("当前令牌数[{}] | 预置令牌数[{}]", availablePermits, maxNetworkConcurrency);
+                }
+                return true;
+            }
+        }
+        // 前两项都通过后，检查响应管理器是否正在提交新任务
+        if (!normal) {
+            if (log.isTraceEnabled()) {
+                log.trace("响应管理器正在提交新任务");
+            }
+            return true;
+        }
+        return false;
     }
 
     private void checkMemory() throws InterruptedException {
@@ -214,10 +225,10 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                     log.debug("内存使用百分比超出设定阈值{}%，当前使用{}%", String.format("%.2f", limitMemory * 100f), String.format("%.2f", usePercent * 100f));
                 }
             }
-            Thread.onSpinWait();
-            if (log.isTraceEnabled()) {
+            Thread.sleep(2000);
+            /*if (log.isTraceEnabled()) {
                 log.trace("休眠结束，再次检查内存占用情况 | {}%", String.format("%.2f", usePercent * 100f));
-            }
+            }*/
             if (System.currentTimeMillis() - startTime > 60 * 1000l) {
                 first = true;
             }
@@ -247,10 +258,6 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
     private static class Inner implements Delayed {
         IRequest request;
         long trigger;
-
-        public void release() {
-            request = null;
-        }
 
         public Inner(IRequest request, int timeout) {
             this.request = request;
