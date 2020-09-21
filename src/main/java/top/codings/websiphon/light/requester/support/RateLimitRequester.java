@@ -82,6 +82,8 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
                     }
                     // 将标记位恢复
                     normal = true;
+                    request.setStatus(READY);
+                    syncBackpress();
                     request.setStatus(REQUEST);
                     Inner inner = new Inner(request, taskTimeoutMillis);
                     timeoutQueue.offer(inner);
@@ -144,6 +146,13 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
         });
     }
 
+    private void syncBackpress() throws InterruptedException {
+        IResponseHandler responseHandler = getResponseHandler();
+        if (responseHandler instanceof AsyncResponseHandler) {
+            ((AsyncResponseHandler) responseHandler).syncBackpress();
+        }
+    }
+
     private void verifyBusy(final int currentVersion) {
         IResponseHandler responseHandler = getResponseHandler();
         if (responseHandler instanceof AsyncResponseHandler) {
@@ -158,9 +167,8 @@ public class RateLimitRequester extends CombineRequester<IRequest> implements Co
     @Override
     public CompletableFuture<IRequest> execute(IRequest request) {
         normal = false;
-        request.setStatus(READY);
+        request.setStatus(WAIT);
         return CompletableFuture.supplyAsync(() -> {
-            request.setStatus(WAIT);
             queue.offer(request);
             return request;
         });

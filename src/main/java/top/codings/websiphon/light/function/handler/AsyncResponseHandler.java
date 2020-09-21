@@ -182,6 +182,18 @@ public abstract class AsyncResponseHandler<T extends IRequest>
     }
 
     @Override
+    public void syncBackpress() throws InterruptedException {
+        boolean keep = true;
+        while (keep) {
+            token.acquire();
+            if (queue.isEmpty()) {
+                keep = false;
+            }
+            token.release();
+        }
+    }
+
+    @Override
     public int count() {
         return queue.size();
     }

@@ -75,14 +75,14 @@ public class RegressionTesting {
         ICrawler crawler = new BaseCrawler(
                 CrawlerConfig.builder()
                         .name(name)
-                        .maxConcurrentProcessing(2)
+                        .maxConcurrentProcessing(1)
                         .build(),
                 responseHandler,
                 requester
         )
                 .wrapBy(new FakeCrawler())
 //                .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler(50, 30000, 0.7f, (request, c) -> {
+                .wrapBy(new RateLimitCrawler(50, 30000, 0f, (request, c) -> {
                     log.debug("请求任务超时 -> {}", request.getUri().toString());
                 }));
         return crawler;
