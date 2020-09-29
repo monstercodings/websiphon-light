@@ -205,7 +205,7 @@ public class ApacheRequester extends CombineRequester<ApacheRequest> {
                 request.requestResult.setThrowable(e);
             } finally {
                 request.unlock();
-                completableFuture.completeAsync(() -> request);
+                completableFuture.complete(request);
             }
         }
 

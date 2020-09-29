@@ -46,7 +46,7 @@ public class TestTrainData {
     }
 
     public static void main(String[] args) throws Exception {
-        String newApiResult = handleData(new File("config/result_new_model.txt"));
+        /*String newApiResult = handleData(new File("config/result_new_model.txt"));
         String oldApiResult = handleData(new File("config/result_old_model.txt"));
         String paddleApiResult = handleData(new File("config/result_paddle_model.txt"));
         String baiduApiResult = handleData(new File("config/result_baidu_model.txt"));
@@ -58,11 +58,12 @@ public class TestTrainData {
                         "----------------------------------------" +
                         "\n情感模型 - Baidu版预测结果\n%s\n",
                 newApiResult, oldApiResult, paddleApiResult, baiduApiResult);
-        System.out.println(s);
+        System.out.println(s);*/
 //        System.out.println(newApiResult);
 //        predictionData("result_baidu_model", "http://124.88.116.204:10052/article/nlp/baidu/emotion");
 //        predictionData("result_old_model", "http://124.88.116.204:10052/article/nlp/old/emotion");
 //        predictionData("result_paddle_model", "http://121.201.107.77:61002/predict/xunchaduan_sentiment");
+        predictionData("test", "http://14.21.37.151:10053/firm/predict");
     }
 
     private static String handleData(File file) throws IOException {
@@ -161,7 +162,7 @@ public class TestTrainData {
         )
                 .wrapBy(new FakeCrawler())
 //                .wrapBy(new FiltrateCrawler())
-                .wrapBy(new RateLimitCrawler(1, 30000, 0f, (request, c) -> {
+                .wrapBy(new RateLimitCrawler(5, 30000, 0f, (request, c) -> {
                     log.debug("请求任务超时 -> {}", request.getUri().toString());
                 }));
         crawler.startup().whenCompleteAsync((c, throwable) -> {
@@ -180,8 +181,6 @@ public class TestTrainData {
 //        map.put("data", Arrays.asList(Arrays.asList(trainData.getContent())));
         byte[] bytes = JSON.toJSONString(map).getBytes("utf-8");
         FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST,
-//                "http://124.88.116.204:10052/article/nlp/old/emotion",
-//                "http://14.21.37.151:10053/firm/predict",
                 url,
                 Unpooled.wrappedBuffer(bytes));
         request.headers()
@@ -196,7 +195,7 @@ public class TestTrainData {
 
     @SneakyThrows
     private static Map<String, Collection<TrainData>> readData() {
-        List<String> lines = FileUtils.readLines(new File("/Users/hj/Documents/project/python/company/kedun/python-spider/data/test_data.csv"), "utf-8");
+        List<String> lines = FileUtils.readLines(new File("config/test_data.csv"), "utf-8");
         Map<String, Collection<TrainData>> map = new ConcurrentHashMap<>();
         lines.parallelStream()
                 .forEach(s -> {

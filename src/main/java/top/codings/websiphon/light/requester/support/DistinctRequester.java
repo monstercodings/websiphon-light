@@ -29,7 +29,7 @@ public class DistinctRequester extends CombineRequester<IRequest> {
     private DistinctRequester(CombineRequester requester, IFilter<String, Boolean> filter, long maxCount, double fpp) {
         super(requester);
         if (null == filter) {
-            this.filter = new IFilter<>() {
+            this.filter = new IFilter<String, Boolean>() {
                 BloomFilter<String> bloomFilter = BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), maxCount, fpp);
 
                 @Override

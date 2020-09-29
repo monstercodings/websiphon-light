@@ -17,6 +17,7 @@ import top.codings.websiphon.light.requester.IRequest;
 import top.codings.websiphon.light.utils.HttpPathUtil;
 
 import java.io.File;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -154,12 +155,12 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
                 if (log.isTraceEnabled()) {
                     log.trace("m3u8分片URL -> {}", s);
                 }
-                waits.add(Map.of(
-                        "url", s,
-                        "count", extInfs.size(),
-                        "index", finalI,
-                        "adder", adder
-                ));
+                Map<String, Object> map = new HashMap<>();
+                map.put("url", s);
+                map.put("count", extInfs.size());
+                map.put("index", finalI);
+                map.put("adder", adder);
+                waits.add(map);
             });
         }
         if (downloadConcurrency) {
@@ -203,7 +204,7 @@ public class M3u8DownloadProcessor extends AbstractProcessor<byte[]> {
             content = bytes;
         }
         if (localStorage) {
-            File file = Path.of(basePath, UUID.randomUUID().toString().replace("-", "") + ".mp4").toFile();
+            File file = FileSystems.getDefault().getPath(basePath, UUID.randomUUID().toString().replace("-", "") + ".mp4").toFile();
             if (!file.getParentFile().exists()) {
                 file.getParentFile().mkdirs();
             }

@@ -48,7 +48,7 @@ public class RegistryCrawler extends CombineCrawler implements RegistrableCrawle
     @Override
     public CompletableFuture<ICrawler> shutdown() {
         CompletableFuture cf = new CompletableFuture();
-        cf.completeAsync(() -> null);
+        cf.complete(null);
         if (null != registry) {
             cf = registry.shutdown();
         }

@@ -89,7 +89,7 @@ public class PluginDefinitionLoader {
                             );
                             classDefinitions.add(classDefinition);
                         }
-                        jarDefinition.setClassDefinitions(classDefinitions.toArray(ClassDefinition[]::new));
+                        jarDefinition.setClassDefinitions(classDefinitions.toArray(new ClassDefinition[0]));
                     } catch (Exception e) {
                         log.error("扫描Jar包失败", e);
                     }

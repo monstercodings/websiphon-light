@@ -9,6 +9,7 @@ import top.codings.websiphon.light.loader.bean.JarDefinition;
 import top.codings.websiphon.light.loader.bean.PluginType;
 
 import java.io.File;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
@@ -75,7 +76,7 @@ public class CacheDefinitionContext {
 
     public void save(JarDefinition jarDefinition, String filename, byte[] bytes) throws Exception {
         String packaging = jarDefinition.getPackaging().replace(".", "/");
-        File file = Path.of(basePath, packaging, jarDefinition.getVersion(), filename).toFile();
+        File file = FileSystems.getDefault().getPath(basePath, packaging, jarDefinition.getVersion(), filename).toFile();
         if (!file.getParentFile().exists()) {
             FileUtils.forceMkdirParent(file);
         }
@@ -85,7 +86,7 @@ public class CacheDefinitionContext {
 
     public void refresh() throws Exception {
         synchronized (this) {
-            File file = Path.of(basePath).toFile();
+            File file = FileSystems.getDefault().getPath(basePath).toFile();
             if (!file.exists()) {
                 FileUtils.forceMkdir(file);
             }
